@@ -47,14 +47,28 @@
 
 ## Удобные агрегаты для ML
 
-**[WeatherBench2](https://arxiv.org/abs/2308.15560)** ([GitHub](https://github.com/google-research/weatherbench2), [данные в GCS](https://console.cloud.google.com/storage/browser/weatherbench2)):
+**[WeatherBench 2](https://arxiv.org/abs/2308.15560)** ([GitHub](https://github.com/google-research/weatherbench2), [данные в GCS](https://console.cloud.google.com/storage/browser/weatherbench2)):
 
 - готовые ERA5 / IFS и прогнозы DL-моделей;
 - пайплайны и метрики;
 - сравнение [детерминированных](https://sites.research.google.com/gr/weatherbench/deterministic-scores/) и [вероятностных](https://sites.research.google.com/gr/weatherbench/probabilistic-scores/) моделей.
 
+### Официальный источник хакатона
+
+```
+gs://weatherbench2/datasets/era5/
+1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr
+```
+
+- сетка **0.25°** (721×1440), шаг **6 h**, есть `total_precipitation_6hr`;
+- выбрать 8 surface + T/U/V/Z/Q на levels `[1000,925,850,700]`;
+- train **2014–2019**, val **2020**, test **2021**;
+- сетка **0.5°** — conservative remapping → 360×720 (см. [task.md](task.md) §2.4–2.5).
+
+Стек: `xarray` + `zarr` + `dask` + `gcsfs` — [07_tools.md](07_tools.md).
+
 ---
 
 ## Связь со сжатием
 
-**CRA5** — сжатый ERA5 через VAEformer (~300–470×): из сотен TB → <1 TB при приемлемой ошибке. Это ближайший «продуктовый» аналог идеи Perceiver-VAE как кодека.
+**CRA5 / VAEformer** — baseline non-inferiority (не цель по ~300×). В хакатоне целевой CR **×32–×64** при малом \(N\).

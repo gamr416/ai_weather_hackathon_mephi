@@ -1,50 +1,73 @@
-# Задачи и метрики
+# Задачи и метрики (хакатон)
 
-> **Внимание:** это выжимка из описания темы Perceiver-VAE, а не официальный brief хакатона. Когда появится `task.md` — сверить и обновить.
-
----
-
-## Три блока работы (как в теме)
-
-### 1. Унификация и токенизация данных
-
-- Даталоадеры: реанализ, surface, спутниковые swaths.
-- Кодировать `(lat, lon, level, variable, time)` позиционными / сферическими фичами.
-- Маски и пропуски — first-class citizen.
-
-### 2. Обучение кодека
-
-- Perceiver-IO VAE с rate–distortion.
-- Physics-aware и spectral regularizers.
-- Curriculum coarse → fine.
-- Mixed precision, activation checkpointing.
-
-### 3. Query-driven decode и оценка
-
-- Головы/queries с учётом переменной и уровня.
-- Произвольная выходная сетка.
-- Метрики ниже.
+Полные формулы и таблица допуска — в [task.md](task.md) §4–§6. Здесь — рабочая шпаргалка.
 
 ---
 
-## Метрики (что обычно смотрят)
+## Задача 1: кодек
 
-| Метрика | Простыми словами |
-|---------|------------------|
-| **RMSE** | Среднеквадратичная ошибка — насколько далеко прогноз/реконструкция от правды |
-| **ACC** | Anomaly Correlation Coefficient — насколько хорошо ловятся аномалии (паттерны отклонения от климатологии) |
-| **CRPS** | Continuous Ranked Probability Score — для вероятностных прогнозов (насколько хорошо распределение) |
-| **Power spectra** | Спектр мощности — не «убили» ли мелкие/крупные масштабы при сжатии |
+- Автоэнкодер, **квантованный** bottleneck.
+- \(\mathrm{CR} = 32\,T\,C\,H\,W / (8B)\), \(C=28\), \(B\) — байты bitstream.
+- Exact roundtrip квантованных символов обязателен.
+- Без entropy coding → только «latent reduction», не codec-зачёт.
 
-Для кодека дополнительно смотрят: compression ratio, MAE по переменным, сохранение экстремумов (ураганы, волны жары) — как в CRA5.
+### Ось исследования (data efficiency)
+
+Вложенные \(N \in \{128, 256, 512, 1024, 2048, 4096, 8192\}\) уникальных 6h кадров  
+→ кривые **качество–данные** и **качество–битрейт** на 0.5° и 0.25°.
+
+Лимиты: ≤20M params, ≤50k steps, ≤48 GPU-h, 1 GPU ≤24 GB.
 
 ---
 
-## Связь с Aurora-пайплайном (если понадобится forecast)
+## Задача 2: latent probe
 
-1. Сбор `(T−1, T)`
-2. Encode → latent
-3. (Опционально) Swin / другая модель шагает latent во времени
-4. Decode → поля на `T+1`
+| Параметр | Значение |
+|----------|----------|
+| Encoder/decoder | **заморожены** |
+| Probe-модель | ≤ **2M** params |
+| Train pairs | ровно **1024** |
+| Steps | ≤ **5000** |
+| Цель | latent\(_{t}\) → latent\(_{t+6h}\) → decode |
 
-В чистом Perceiver-VAE акцент на шагах 2 и 4 (+ качество latent), а не обязательно на полном Aurora-backbone.
+Сравнение: vs persistence; vs тот же probe на признаках VAEformer-референса.
+
+---
+
+## Scores
+
+| Score | Что усредняет |
+|-------|----------------|
+| \(S_\mathrm{surface}\) | NRMSE по 8 surface (равные веса) |
+| \(S_\mathrm{pressure}\) | NRMSE по 20 (var×level) |
+| \(S_\mathrm{all}\) | \(0.5\,S_\mathrm{surface}+0.5\,S_\mathrm{pressure}\) |
+
+База: **latitude-weighted RMSE**, затем NRMSE = RMSE / \(\sigma_{f,\mathrm{train}}\).
+
+Ещё: физический RMSE, PSNR (0.5–99.5 pct), спектры, экстремумы осадков.
+
+---
+
+## Non-inferiority (допуск)
+
+\(\Delta = 100(\mathrm{NRMSE}_\mathrm{model}/\mathrm{NRMSE}_\mathrm{ref}-1)\);  
+95% CI — block bootstrap (7 дней, 2000×).
+
+| | 32× | 64× |
+|--|-----|-----|
+| CI верх \(S_\mathrm{all}\) | ≤ +3% | ≤ +7% |
+| CI верх surface/pressure | ≤ +5% | ≤ +8% |
+| CI верх критическое поле | ≤ +7% | ≤ +10% |
+| Δ PSNR низ | ≥ −0.25 dB | ≥ −0.5 dB |
+| Spectral error | ≤ 5% | ≤ 10% |
+| CR + roundtrip | да | да |
+
+---
+
+## Практичный план на 12 GB
+
+1. Подготовка локального 28ch Zarr (срез N, начать с 0.5°).
+2. Лёгкий AE ≤20M + quantization + (по возможности) entropy coding.
+3. Sweep по \(N\) при целевых ×32 и ×64.
+4. Probe на лучшем checkpoint.
+5. Сравнение с референсом VAEformer по evaluator организаторов (когда будет).

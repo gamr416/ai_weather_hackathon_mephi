@@ -1,0 +1,41 @@
+# Python 3.11 (.venv). Системный python 3.14 не используем — нет нормальных torch wheels.
+#
+# Создание:
+#   python3.11 -m venv .venv
+#   source .venv/bin/activate
+#   pip install -U pip setuptools wheel
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+#   pip install -r requirements.txt
+#
+# Активация:
+#   source .venv/bin/activate
+
+# Core ML (torch ставится отдельно с CUDA index, см. выше)
+numpy
+scipy
+einops
+safetensors
+
+# Training utilities
+tqdm
+pyyaml
+omegaconf
+tensorboard
+accelerate
+
+# Weather / geospatial data
+xarray
+netCDF4
+zarr
+dask
+fsspec
+cfgrib
+eccodes
+
+# Plotting / notebooks
+matplotlib
+jupyter
+
+# Misc
+requests
+huggingface_hub

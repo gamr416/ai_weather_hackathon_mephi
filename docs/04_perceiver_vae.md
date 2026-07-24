@@ -34,7 +34,8 @@ Output queries ──cross-attn───────────┘──► Out
 
 Это и есть **rate–distortion** цель: баланс «качество ↔ сжатие».
 
-Ближайший погодный аналог: **VAEformer → CRA5** (сжатие ERA5 в сотни раз).
+Ближайший погодный аналог и **baseline хакатона**: **VAEformer → CRA5**.  
+В ТЗ цель скромнее по битрейту (**×32–×64** по bitstream), но с формальной **non-inferiority** к VAEformer и явным исследованием **data efficiency** (\(N\) уникальных кадров). См. [task.md](task.md).
 
 ---
 
