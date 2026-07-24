@@ -27,6 +27,7 @@ Thumbs.db
 # Data / models (large artifacts)
 data/
 datasets/
+logs/
 *.nc
 *.grib
 *.grb

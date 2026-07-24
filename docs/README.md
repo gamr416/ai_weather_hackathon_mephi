@@ -3,14 +3,15 @@
 ## С чего начать
 
 1. [**Полное ТЗ**](task.md) ← главный документ
-2. [Обзор](00_overview.md) — зачем и что строим
-3. [28 каналов хакатона](01_weather_variables.md#набор-хакатона-28-каналов) — surface + уровни
-4. [Данные / WeatherBench 2](02_datasets.md) — откуда качать
-5. [Задачи и метрики](05_tasks_and_metrics.md) — codec + probe + критерии
-6. [Инструменты](07_tools.md) — xarray, zarr, cartopy…
-7. [Aurora](03_aurora.md) — что реально на 12 GB
-8. [Perceiver / VAE](04_perceiver_vae.md) — идеи кодека
-9. [Глоссарий](06_glossary.md)
+2. [**Скачать данные**](../README.md#данные-05) — скрипт 0.5°, proxy, N=512
+3. [Обзор](00_overview.md) — зачем и что строим
+4. [28 каналов хакатона](01_weather_variables.md#набор-хакатона-28-каналов) — surface + уровни
+5. [Данные / WeatherBench 2](02_datasets.md) — откуда качать
+6. [Задачи и метрики](05_tasks_and_metrics.md) — codec + probe + критерии
+7. [Инструменты](07_tools.md) — xarray, zarr, cartopy…
+8. [Aurora](03_aurora.md) — что реально на 12 GB
+9. [Perceiver / VAE](04_perceiver_vae.md) — идеи кодека
+10. [Глоссарий](06_glossary.md)
 
 ## Окружение
 
