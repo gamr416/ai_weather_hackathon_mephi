@@ -1,4 +1,4 @@
-"""Train Perceiver-AE codec on local ERA5 0.5° zarr."""
+"""Train Spatial-FSQ codec (scripts/spatial_fsq/)."""
 from __future__ import annotations
 
 import argparse
@@ -14,7 +14,7 @@ import yaml
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -25,27 +25,17 @@ from src.data.era5 import (
     load_stats,
     save_stats,
 )
-from src.models.perceiver_ae import PerceiverAE, group_recon_stats, latitude_weighted_mse
+from src.models.spatial_fsq import SpatialFSQAE, group_recon_stats, latitude_weighted_mse
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Train Perceiver AE on ERA5 28ch")
-    p.add_argument("--config", type=Path, default=ROOT / "configs" / "perceiver_0p5.yaml")
-    p.add_argument("--data", type=Path, default=None, help="Override data.root")
+    p = argparse.ArgumentParser(description="Train Spatial-FSQ AE on ERA5 28ch")
+    p.add_argument("--config", type=Path, default=ROOT / "configs" / "spatial_fsq_0p5.yaml")
+    p.add_argument("--data", type=Path, default=None)
     p.add_argument("--steps", type=int, default=None)
     p.add_argument("--device", type=str, default=None)
-    p.add_argument(
-        "--run-name",
-        type=str,
-        default=None,
-        help="Optional tag for the run folder (default: auto timestamp)",
-    )
-    p.add_argument(
-        "--out-dir",
-        type=Path,
-        default=None,
-        help="Exact output directory (skips auto timestamp). Old runs are never deleted.",
-    )
+    p.add_argument("--run-name", type=str, default=None)
+    p.add_argument("--out-dir", type=Path, default=None)
     return p.parse_args()
 
 
@@ -55,18 +45,13 @@ def load_config(path: Path) -> dict:
 
 
 def make_run_dir(cfg: dict, args: argparse.Namespace) -> Path:
-    """Each training run gets a fresh folder; never overwrite previous runs."""
     if args.out_dir is not None:
         out = Path(args.out_dir)
         if out.exists() and any(out.iterdir()):
-            raise SystemExit(
-                f"Refusing to overwrite non-empty run dir: {out}\n"
-                "Pass a new --out-dir or omit it to auto-create a timestamped folder."
-            )
+            raise SystemExit(f"Refusing to overwrite non-empty run dir: {out}")
         out.mkdir(parents=True, exist_ok=True)
         return out
-
-    base = Path(cfg["train"].get("runs_root", "runs/perceiver_0p5"))
+    base = Path(cfg["train"].get("runs_root", "runs/spatial_fsq_0p5"))
     stamp = time.strftime("%Y%m%d_%H%M%S")
     tag = args.run_name or cfg["train"].get("run_name") or "run"
     tag = "".join(c if c.isalnum() or c in "-_" else "_" for c in tag)
@@ -75,9 +60,9 @@ def make_run_dir(cfg: dict, args: argparse.Namespace) -> Path:
     return out
 
 
-def vq_weight_at(step: int, cfg: dict) -> float:
-    target = float(cfg["train"].get("vq_weight", 0.1))
-    warmup = int(cfg["train"].get("vq_warmup_steps", 1000))
+def rate_weight_at(step: int, cfg: dict) -> float:
+    target = float(cfg["train"].get("rate_weight", 0.02))
+    warmup = int(cfg["train"].get("rate_warmup_steps", 1500))
     if warmup <= 0:
         return target
     return target * min(1.0, step / warmup)
@@ -85,45 +70,50 @@ def vq_weight_at(step: int, cfg: dict) -> float:
 
 def make_scheduler(opt: torch.optim.Optimizer, cfg: dict, max_steps: int):
     warmup = int(cfg["train"].get("warmup_steps", 500))
-    base_lr = float(cfg["train"]["lr"])
 
     def lr_lambda(step: int) -> float:
-        # step is 0-based from scheduler
         s = step + 1
         if s <= warmup:
             return s / max(warmup, 1)
         progress = (s - warmup) / max(max_steps - warmup, 1)
         return 0.5 * (1.0 + math.cos(math.pi * min(progress, 1.0)))
 
-    return torch.optim.lr_scheduler.LambdaLR(opt, lr_lambda), base_lr
+    return torch.optim.lr_scheduler.LambdaLR(opt, lr_lambda)
 
 
 @torch.no_grad()
 def evaluate(
-    model: PerceiverAE,
+    model: SpatialFSQAE,
     loader: DataLoader,
     device: torch.device,
-    vq_weight: float,
+    rate_w: float,
+    commit_w: float,
     channel_w: torch.Tensor,
 ) -> dict:
     model.eval()
-    tot_rec, tot_vq, tot_ppl, n = 0.0, 0.0, 0.0, 0
+    tot_rec = tot_rate = tot_commit = tot_cr = n = 0.0
     for batch in loader:
         x = batch["x"].to(device)
         st = batch["static"].to(device)
         w = batch["lat_weight"].to(device)
         out = model(x, st)
         rec = latitude_weighted_mse(out["recon"], x, w, channel_w)
+        b, _, h, w_img = x.shape
+        input_bits = 32.0 * 28 * h * w_img * b
+        rate_norm = out["rate_bits"] / max(input_bits, 1.0)
         tot_rec += float(rec) * x.shape[0]
-        tot_vq += float(out["vq_loss"]) * x.shape[0]
-        tot_ppl += float(out["perplexity"]) * x.shape[0]
+        tot_rate += float(rate_norm) * x.shape[0]
+        tot_commit += float(out["commit"]) * x.shape[0]
+        tot_cr += float(out["cr_raw"]) * x.shape[0]
         n += x.shape[0]
     model.train()
+    n = max(n, 1.0)
     return {
-        "val_recon": tot_rec / max(n, 1),
-        "val_vq": tot_vq / max(n, 1),
-        "val_ppl": tot_ppl / max(n, 1),
-        "val_loss": (tot_rec + vq_weight * tot_vq) / max(n, 1),
+        "val_recon": tot_rec / n,
+        "val_rate": tot_rate / n,
+        "val_commit": tot_commit / n,
+        "val_cr": tot_cr / n,
+        "val_loss": (tot_rec + rate_w * tot_rate + commit_w * tot_commit) / n,
     }
 
 
@@ -142,7 +132,6 @@ def main() -> None:
     )
     out_dir = make_run_dir(cfg, args)
     cfg["train"]["out_dir"] = str(out_dir)
-    # snapshot config + run meta for reproducibility
     (out_dir / "config.yaml").write_text(yaml.safe_dump(cfg, sort_keys=False))
     meta = {
         "out_dir": str(out_dir),
@@ -151,6 +140,7 @@ def main() -> None:
         "config_src": str(args.config),
         "run_name": args.run_name,
         "max_steps": cfg["train"]["max_steps"],
+        "pipeline": "spatial_fsq",
     }
     (out_dir / "run_meta.json").write_text(json.dumps(meta, indent=2))
     print(f"Run directory: {out_dir}")
@@ -160,34 +150,26 @@ def main() -> None:
     val_path = root / "val.zarr"
     static_path = root / "static.zarr"
     if not train_path.exists():
-        raise SystemExit(
-            f"Missing {train_path}. Wait for download or pass --data path/to/era5_...zarr"
-        )
+        raise SystemExit(f"Missing {train_path}")
 
     stats_path = out_dir / "norm_stats.npz"
+    mean = std = None
     if stats_path.exists():
         mean, std = load_stats(stats_path)
         if not (np.isfinite(mean).all() and np.isfinite(std).all()):
-            print(f"Corrupt stats in {stats_path} (NaNs) — recomputing")
             stats_path.unlink()
             mean = std = None
         else:
             print(f"Loaded stats from {stats_path}")
-    else:
-        mean = std = None
 
     ds_kwargs = dict(
         crop_size=cfg["data"]["crop_size"],
         static_path=static_path if static_path.exists() else None,
     )
-
     if mean is None or std is None:
         print("Estimating train mean/std…")
         train_ds = Era5ZarrDataset(
-            train_path,
-            augment=True,
-            seed=cfg["train"]["seed"],
-            **ds_kwargs,
+            train_path, augment=True, seed=cfg["train"]["seed"], **ds_kwargs
         )
         save_stats(train_ds.mean.numpy().reshape(28), train_ds.std.numpy().reshape(28), stats_path)
     else:
@@ -211,8 +193,6 @@ def main() -> None:
             seed=cfg["train"]["seed"] + 1,
             static_path=static_path if static_path.exists() else None,
         )
-
-    # occasional full-frame val
     val_full_ds = None
     if val_path.exists() and cfg["train"].get("full_frame_val_every"):
         val_full_ds = Era5ZarrDataset(
@@ -233,34 +213,35 @@ def main() -> None:
         pin_memory=device.type == "cuda",
         drop_last=True,
     )
-    val_loader = None
-    if val_ds is not None and len(val_ds) > 0:
-        val_loader = DataLoader(
-            val_ds,
-            batch_size=cfg["train"]["batch_size"],
-            shuffle=False,
-            num_workers=0,
-        )
-    val_full_loader = None
-    if val_full_ds is not None and len(val_full_ds) > 0:
-        val_full_loader = DataLoader(val_full_ds, batch_size=1, shuffle=False, num_workers=0)
+    val_loader = (
+        DataLoader(val_ds, batch_size=cfg["train"]["batch_size"], shuffle=False, num_workers=0)
+        if val_ds is not None and len(val_ds) > 0
+        else None
+    )
+    val_full_loader = (
+        DataLoader(val_full_ds, batch_size=1, shuffle=False, num_workers=0)
+        if val_full_ds is not None and len(val_full_ds) > 0
+        else None
+    )
 
     mcfg = cfg["model"]
-    model = PerceiverAE(
+    model = SpatialFSQAE(
         in_channels=28,
         static_channels=int(mcfg.get("static_channels", 4)),
-        patch_size=mcfg["patch_size"],
-        dim=mcfg["dim"],
-        num_latents=mcfg["num_latents"],
-        depth=mcfg["depth"],
-        heads=mcfg["heads"],
-        codebook_size=mcfg["codebook_size"],
-        vq_beta=float(mcfg.get("vq_beta", 0.1)),
-        dropout=mcfg.get("dropout", 0.0),
+        patch_size=int(mcfg["patch_size"]),
+        dim=int(mcfg["dim"]),
+        depth=int(mcfg["depth"]),
+        heads=int(mcfg["heads"]),
+        latent_channels=int(mcfg["latent_channels"]),
+        num_levels=int(mcfg["num_levels"]),
+        dropout=float(mcfg.get("dropout", 0.0)),
     ).to(device)
 
     nparams = model.num_parameters()
-    print(f"Device={device}  params={nparams/1e6:.2f}M  (limit 20M)")
+    print(
+        f"Device={device}  params={nparams/1e6:.2f}M  "
+        f"expected_raw_CR≈×{model.expected_raw_cr():.1f}  (limit 20M)"
+    )
     if nparams > 20_000_000:
         raise SystemExit(f"Model has {nparams} params > 20M hackathon limit")
 
@@ -270,14 +251,15 @@ def main() -> None:
         weight_decay=cfg["train"].get("weight_decay", 0.01),
     )
     max_steps = int(cfg["train"]["max_steps"])
-    sched, _ = make_scheduler(opt, cfg, max_steps)
+    sched = make_scheduler(opt, cfg, max_steps)
     accum = int(cfg["train"].get("grad_accum", 1))
+    commit_w = float(cfg["train"].get("commit_weight", 0.05))
+    select_full = bool(cfg["train"].get("select_full_frame", True))
 
     log_every = int(cfg["train"].get("log_every", 20))
     val_every = int(cfg["train"].get("val_every", 200))
-    ckpt_every = int(cfg["train"].get("ckpt_every", 500))
+    ckpt_every = int(cfg["train"].get("ckpt_every", 1000))
     full_every = int(cfg["train"].get("full_frame_val_every", 0) or 0)
-    vq_warmup = int(cfg["train"].get("vq_warmup_steps", 1000))
 
     ch_w_cfg = cfg["train"].get("channel_weights") or DEFAULT_CHANNEL_WEIGHTS
     channel_w = channel_weight_tensor(ch_w_cfg).to(device)
@@ -286,13 +268,13 @@ def main() -> None:
     scaler = torch.amp.GradScaler("cuda", enabled=use_cuda)
     model.train()
     step = 0
-    best_recon = math.inf
+    best_score = math.inf
     history: list[dict] = []
     t0 = time.time()
     data_iter = iter(train_loader)
     opt.zero_grad(set_to_none=True)
 
-    pbar = tqdm(total=max_steps, desc="train")
+    pbar = tqdm(total=max_steps, desc="spatial_fsq")
     while step < max_steps:
         try:
             batch = next(data_iter)
@@ -303,12 +285,15 @@ def main() -> None:
         x = batch["x"].to(device, non_blocking=True)
         st = batch["static"].to(device, non_blocking=True)
         w = batch["lat_weight"].to(device, non_blocking=True)
-        vw = vq_weight_at(step + 1, cfg)
+        rw = rate_weight_at(step + 1, cfg)
 
         with torch.amp.autocast("cuda", enabled=use_cuda):
             out = model(x, st)
             rec = latitude_weighted_mse(out["recon"], x, w, channel_w)
-            loss = (rec + vw * out["vq_loss"]) / accum
+            bsz, _, h, w_img = x.shape
+            input_bits = 32.0 * 28 * h * w_img * bsz
+            rate_norm = out["rate_bits"] / max(input_bits, 1.0)
+            loss = (rec + rw * rate_norm + commit_w * out["commit"]) / accum
 
         scaler.scale(loss).backward()
 
@@ -325,14 +310,15 @@ def main() -> None:
 
         if step % log_every == 0:
             groups = group_recon_stats(out["recon"], x, w)
-            ppl = float(out["perplexity"].detach())
             row = {
                 "step": step,
                 "loss": float(loss.detach() * accum),
                 "recon": float(rec.detach()),
-                "vq": float(out["vq_loss"].detach()),
-                "vq_w": vw,
-                "ppl": ppl,
+                "rate": float(rate_norm.detach()),
+                "commit": float(out["commit"].detach()),
+                "cr": float(out["cr_raw"].detach()),
+                "usage": float(out["usage"].detach()) if torch.is_tensor(out["usage"]) else float(out["usage"]),
+                "rate_w": rw,
                 "lr": float(opt.param_groups[0]["lr"]),
                 "sec": time.time() - t0,
                 **{f"g_{k}": v for k, v in groups.items()},
@@ -340,42 +326,51 @@ def main() -> None:
             pbar.set_postfix(
                 loss=row["loss"],
                 rec=row["recon"],
-                vq=row["vq"],
-                ppl=ppl,
-                vqw=f"{vw:.3f}",
+                cr=f"{row['cr']:.0f}",
+                rw=f"{rw:.3f}",
             )
             history.append(row)
 
         if val_loader is not None and step % val_every == 0:
-            metrics = evaluate(model, val_loader, device, vw, channel_w)
+            metrics = evaluate(model, val_loader, device, rw, commit_w, channel_w)
             print(
                 f"\n[val] step={step} "
                 + " ".join(f"{k}={v:.4f}" for k, v in metrics.items())
             )
-            if step > vq_warmup and metrics["val_ppl"] < 5.0:
-                print(f"  WARN: val_ppl={metrics['val_ppl']:.2f} < 5 after VQ warmup")
             history.append({"step": step, **metrics})
-            # checkpoint on reconstruction quality (ignore VQ spikes)
-            if metrics["val_recon"] < best_recon:
-                best_recon = metrics["val_recon"]
+            score = metrics["val_recon"]
+            if (not select_full) and score < best_score:
+                best_score = score
                 torch.save(
                     {
                         "model": model.state_dict(),
                         "cfg": cfg,
                         "step": step,
-                        "best_val_recon": best_recon,
+                        "best_val_recon": best_score,
                         "nparams": nparams,
                     },
                     out_dir / "best.pt",
                 )
 
         if full_every and val_full_loader is not None and step % full_every == 0:
-            mfull = evaluate(model, val_full_loader, device, vw, channel_w)
+            mfull = evaluate(model, val_full_loader, device, rw, commit_w, channel_w)
             print(
                 f"[val-full] step={step} "
                 + " ".join(f"{k}={v:.4f}" for k, v in mfull.items())
             )
             history.append({"step": step, **{f"full_{k}": v for k, v in mfull.items()}})
+            if select_full and mfull["val_recon"] < best_score:
+                best_score = mfull["val_recon"]
+                torch.save(
+                    {
+                        "model": model.state_dict(),
+                        "cfg": cfg,
+                        "step": step,
+                        "best_full_val_recon": best_score,
+                        "nparams": nparams,
+                    },
+                    out_dir / "best.pt",
+                )
 
         if step % ckpt_every == 0:
             torch.save(
@@ -388,11 +383,17 @@ def main() -> None:
         {"model": model.state_dict(), "cfg": cfg, "step": step, "nparams": nparams},
         out_dir / "last.pt",
     )
+    if not (out_dir / "best.pt").exists():
+        # fallback if full-frame never beat inf (e.g. full_every > max_steps)
+        torch.save(
+            {"model": model.state_dict(), "cfg": cfg, "step": step, "nparams": nparams},
+            out_dir / "best.pt",
+        )
     (out_dir / "history.json").write_text(json.dumps(history, indent=2))
     print(f"Done. checkpoints → {out_dir}")
     print(
-        "Evaluate + plots (full frame):\n"
-        f"  python scripts/evaluate.py --ckpt {out_dir / 'best.pt'} "
+        "Evaluate:\n"
+        f"  python scripts/spatial_fsq/evaluate.py --ckpt {out_dir / 'best.pt'} "
         f"--data {root} --split val"
     )
 

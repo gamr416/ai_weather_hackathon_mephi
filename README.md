@@ -69,11 +69,13 @@ print(ds.fields.shape)  # (512, 28, 360, 720)
 ```bash
 source .venv/bin/activate
 # короткий прогон
-python scripts/train.py --config configs/perceiver_0p5.yaml --data data/era5_28ch_0p5_6h_n64.zarr --steps 100
+python scripts/train.py --config configs/perceiver_0p5.yaml --data data/era5_28ch_0p5_6h_n64.zarr --steps 100 --run-name smoke
 
 # обычный
-python scripts/train.py --config configs/perceiver_0p5.yaml --data data/era5_28ch_0p5_6h_n128.zarr
+python scripts/train.py --config configs/perceiver_0p5.yaml --data data/era5_28ch_0p5_6h_n64.zarr --run-name n64
 ```
+
+Каждый прогон → новая папка `runs/perceiver_0p5/<YYYYMMDD_HHMMSS>_<tag>/` (старые не трогаются). Внутри: `config.yaml`, `run_meta.json`, `best.pt`, `norm_stats.npz`, …
 
 Что внутри:
 - `src/models/perceiver_ae.py` — Perceiver-IO encode/decode + VQ bottleneck  
@@ -83,26 +85,26 @@ python scripts/train.py --config configs/perceiver_0p5.yaml --data data/era5_28c
 Лимит: модель должна быть ≤20M params (проверяется при старте).  
 Пока это **скелет кодека** (VQ); полноценный entropy bitstream под CR ×32/×64 — следующий шаг.
 
-Чекпойнты: `runs/perceiver_0p5_n64/best.pt`, `last.pt`, `norm_stats.npz`.
-
 ### Оценка и графики
 
-После обучения:
+После обучения (по умолчанию **full-frame** 360×720), подставь путь конкретного прогона:
 
 ```bash
 python scripts/evaluate.py \
-  --ckpt runs/perceiver_0p5_n64/best.pt \
+  --ckpt runs/perceiver_0p5/20260724_211500_n64/best.pt \
   --data data/era5_28ch_0p5_6h_n64.zarr \
   --split val
 ```
 
-В каталог `runs/.../eval_val/` пишется:
-- `metrics.json` — \(S_\mathrm{all}\), surface/pressure, NRMSE по каналам  
-- `nrmse_bars.png` — столбцы по 28 полям  
-- `compare_frameXXXX.png` — truth / recon / diff  
-- `train_curves.png` — кривые из `history.json` (если есть)
+Для eval на training-crop: добавь `--crop`.
 
-Сравнение с **VAEformer** (non-inferiority CI) — когда появится их baseline/evaluator; пока метрики относительные между вашими прогонами.
+В каталог `runs/.../eval_val/` пишется:
+- `metrics.json` — \(S_\mathrm{all}\), surface/pressure, NRMSE (= rmse в norm-space) + physical RMSE  
+- `nrmse_bars.png`, `compare_frame*.png`, `train_curves.png`
+
+Checkpoint `best.pt` выбирается по **val_recon** (не по VQ).  
+Сравнение с VAEformer CI — когда появится их baseline/evaluator.
+
 
 
 

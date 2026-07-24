@@ -1,0 +1,67 @@
+# Spatial uniform-quant AE @ ERA5 0.5° — CR ≈ ×75 raw (near ×64)
+
+data:
+  root: data/era5_28ch_0p5_6h_n128.zarr
+  crop_size: 192
+
+model:
+  patch_size: 8
+  dim: 256
+  depth: 6
+  heads: 8
+  latent_channels: 96
+  num_levels: 256
+  static_channels: 4
+  dropout: 0.05
+
+train:
+  seed: 0
+  batch_size: 2
+  grad_accum: 2
+  lr: 1.5e-4
+  weight_decay: 0.01
+  warmup_steps: 500
+  max_steps: 15000
+  # rate: λ * (rate_bits / input_float_bits); warmup from 0 → rate_weight
+  rate_weight: 0.02
+  rate_warmup_steps: 1500
+  commit_weight: 0.05
+  grad_clip: 1.0
+  log_every: 20
+  val_every: 200
+  full_frame_val_every: 1000
+  ckpt_every: 1000
+  num_workers: 0
+  runs_root: runs/spatial_fsq_0p5
+  run_name: n128
+  # select best by full-frame val recon when available, else crop val
+  select_full_frame: true
+  channel_weights:
+    t2m: 1.0
+    mslp: 0.5
+    u10: 3.0
+    v10: 3.0
+    tp6h: 5.0
+    sst: 1.0
+    tcwv: 1.5
+    tcc: 3.0
+    T1000: 1.0
+    T925: 1.0
+    T850: 1.0
+    T700: 1.0
+    U1000: 3.0
+    U925: 3.0
+    U850: 3.0
+    U700: 3.0
+    V1000: 3.0
+    V925: 3.0
+    V850: 3.0
+    V700: 3.0
+    Z1000: 0.5
+    Z925: 0.5
+    Z850: 0.5
+    Z700: 0.5
+    Q1000: 3.0
+    Q925: 3.0
+    Q850: 3.0
+    Q700: 3.0

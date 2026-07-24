@@ -69,7 +69,7 @@ class PerceiverBlock(nn.Module):
 class VectorQuantizer(nn.Module):
     """VQ-VAE bottleneck with straight-through estimator."""
 
-    def __init__(self, codebook_size: int, dim: int, beta: float = 0.25) -> None:
+    def __init__(self, codebook_size: int, dim: int, beta: float = 0.1) -> None:
         super().__init__()
         self.codebook_size = codebook_size
         self.beta = beta
@@ -77,9 +77,7 @@ class VectorQuantizer(nn.Module):
         nn.init.uniform_(self.embed.weight, -1.0 / codebook_size, 1.0 / codebook_size)
 
     def forward(self, z: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        # z: (B, N, D)
         flat = z.reshape(-1, z.shape[-1])
-        # distances to codebook
         dist = (
             flat.pow(2).sum(1, keepdim=True)
             - 2 * flat @ self.embed.weight.t()
@@ -88,14 +86,11 @@ class VectorQuantizer(nn.Module):
         idx = dist.argmin(dim=1)
         z_q = self.embed(idx).view(z.shape)
 
-        # losses
         commit = F.mse_loss(z_q.detach(), z)
         code = F.mse_loss(z_q, z.detach())
         vq_loss = code + self.beta * commit
 
-        # STE
         z_q_st = z + (z_q - z).detach()
-        # perplexity diagnostic
         ah = torch.histc(idx.float(), bins=self.codebook_size, min=0, max=self.codebook_size - 1)
         probs = ah / ah.sum().clamp_min(1)
         perplexity = torch.exp(-(probs * (probs + 1e-10).log()).sum())
@@ -109,8 +104,7 @@ class PatchEmbed(nn.Module):
         self.proj = nn.Conv2d(in_ch, dim, kernel_size=patch, stride=patch)
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, tuple[int, int]]:
-        # x: B,C,H,W
-        tokens = self.proj(x)  # B,D,Gh,Gw
+        tokens = self.proj(x)
         gh, gw = tokens.shape[-2:]
         tokens = rearrange(tokens, "b d gh gw -> b (gh gw) d")
         return tokens, (gh, gw)
@@ -119,41 +113,44 @@ class PatchEmbed(nn.Module):
 class PerceiverAE(nn.Module):
     """
     Encode patches → Perceiver latents → VQ → decode queries → image.
-
-    Designed for ERA5 28ch @ 0.5° crops; keep params ≤ ~20M.
+    Optional static conditioning (lsm, orog, sinφ, cosφ) concatenated on encode input
+    and added to decoder queries.
     """
 
     def __init__(
         self,
         in_channels: int = 28,
+        static_channels: int = 4,
         patch_size: int = 16,
         dim: int = 192,
-        num_latents: int = 128,
+        num_latents: int = 256,
         depth: int = 4,
         heads: int = 4,
-        codebook_size: int = 1024,
+        codebook_size: int = 2048,
+        vq_beta: float = 0.1,
         dropout: float = 0.0,
     ) -> None:
         super().__init__()
         self.patch_size = patch_size
         self.dim = dim
         self.num_latents = num_latents
+        self.in_channels = in_channels
+        self.static_channels = static_channels
 
-        self.patch_embed = PatchEmbed(in_channels, patch_size, dim)
+        self.patch_embed = PatchEmbed(in_channels + static_channels, patch_size, dim)
+        self.static_patch = PatchEmbed(static_channels, patch_size, dim)
         self.latents = nn.Parameter(torch.randn(num_latents, dim) * 0.02)
         self.encoder_blocks = nn.ModuleList(
             [PerceiverBlock(dim, heads=heads, dropout=dropout) for _ in range(depth)]
         )
         self.pre_vq = nn.Sequential(nn.LayerNorm(dim), nn.Linear(dim, dim))
-        self.vq = VectorQuantizer(codebook_size, dim)
+        self.vq = VectorQuantizer(codebook_size, dim, beta=vq_beta)
         self.decoder_blocks = nn.ModuleList(
             [PerceiverBlock(dim, heads=heads, dropout=dropout) for _ in range(depth)]
         )
-        self.query_pos = nn.Parameter(torch.randn(1, 1, dim) * 0.02)  # broadcast add via grid below
+        self.query_pos = nn.Parameter(torch.randn(1, 1, dim) * 0.02)
         self.to_patch = nn.Linear(dim, in_channels * patch_size * patch_size)
-        self.in_channels = in_channels
 
-        # fixed 2d sin-cos style learnable grid bias built on the fly via Linear of coords
         self.pos_mlp = nn.Sequential(
             nn.Linear(4, dim),
             nn.GELU(),
@@ -166,10 +163,13 @@ class PerceiverAE(nn.Module):
         yy, xx = torch.meshgrid(ys, xs, indexing="ij")
         feat = torch.stack([yy, xx, torch.sin(math.pi * yy), torch.sin(math.pi * xx)], dim=-1)
         feat = feat.reshape(1, gh * gw, 4)
-        return self.pos_mlp(feat)  # 1,N,D
+        return self.pos_mlp(feat)
 
-    def encode(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, tuple[int, int]]:
-        tokens, (gh, gw) = self.patch_embed(x)
+    def encode(
+        self, x: torch.Tensor, static: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, tuple[int, int]]:
+        x_in = torch.cat([x, static], dim=1)
+        tokens, (gh, gw) = self.patch_embed(x_in)
         tokens = tokens + self._grid_pos(gh, gw, x.device, tokens.dtype)
         latents = repeat(self.latents, "n d -> b n d", b=x.shape[0])
         for blk in self.encoder_blocks:
@@ -178,12 +178,14 @@ class PerceiverAE(nn.Module):
         z_q, vq_loss, ppl = self.vq(z)
         return z_q, vq_loss, ppl, (gh, gw)
 
-    def decode(self, z_q: torch.Tensor, gh: int, gw: int) -> torch.Tensor:
+    def decode(self, z_q: torch.Tensor, static: torch.Tensor, gh: int, gw: int) -> torch.Tensor:
         queries = self._grid_pos(gh, gw, z_q.device, z_q.dtype).expand(z_q.shape[0], -1, -1)
         queries = queries + self.query_pos
+        st_tok, _ = self.static_patch(static)
+        queries = queries + st_tok
         for blk in self.decoder_blocks:
             queries = blk(queries, z_q)
-        patches = self.to_patch(queries)  # B, Gh*Gw, C*P*P
+        patches = self.to_patch(queries)
         x = rearrange(
             patches,
             "b (gh gw) (c ph pw) -> b c (gh ph) (gw pw)",
@@ -195,18 +197,20 @@ class PerceiverAE(nn.Module):
         )
         return x
 
-    def forward(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
-        # pad to multiple of patch
+    def forward(self, x: torch.Tensor, static: torch.Tensor | None = None) -> dict[str, torch.Tensor]:
         b, c, h, w = x.shape
+        if static is None:
+            static = x.new_zeros(b, self.static_channels, h, w)
         ph = self.patch_size
         pad_h = (ph - h % ph) % ph
         pad_w = (ph - w % ph) % ph
         if pad_h or pad_w:
             x_in = F.pad(x, (0, pad_w, 0, pad_h))
+            st_in = F.pad(static, (0, pad_w, 0, pad_h))
         else:
-            x_in = x
-        z_q, vq_loss, ppl, (gh, gw) = self.encode(x_in)
-        recon = self.decode(z_q, gh, gw)
+            x_in, st_in = x, static
+        z_q, vq_loss, ppl, (gh, gw) = self.encode(x_in, st_in)
+        recon = self.decode(z_q, st_in, gh, gw)
         recon = recon[:, :, :h, :w]
         return {"recon": recon, "vq_loss": vq_loss, "perplexity": ppl, "z_q": z_q}
 
@@ -218,11 +222,43 @@ def latitude_weighted_mse(
     pred: torch.Tensor,
     target: torch.Tensor,
     lat_weight: torch.Tensor,
+    channel_weight: torch.Tensor | None = None,
 ) -> torch.Tensor:
-    """pred/target: B,C,H,W; lat_weight: B,H or H."""
+    """pred/target: B,C,H,W; lat_weight: B,H or H; channel_weight: C."""
     if lat_weight.dim() == 1:
         w = lat_weight.view(1, 1, -1, 1)
     else:
         w = lat_weight.view(lat_weight.shape[0], 1, -1, 1)
     err = (pred - target).pow(2) * w
+    if channel_weight is not None:
+        cw = channel_weight.view(1, -1, 1, 1).to(device=err.device, dtype=err.dtype)
+        err = err * cw
+        return err.mean()
     return err.mean()
+
+
+def group_recon_stats(
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    lat_weight: torch.Tensor,
+) -> dict[str, float]:
+    """Per-group mean squared error in normalized space (no channel weights)."""
+    if lat_weight.dim() == 1:
+        w = lat_weight.view(1, 1, -1, 1)
+    else:
+        w = lat_weight.view(lat_weight.shape[0], 1, -1, 1)
+    err = (pred - target).pow(2) * w
+    # channel indices
+    groups = {
+        "surface": slice(0, 8),
+        "wind": list(range(2, 4)) + list(range(12, 20)),
+        "precip": [4],
+        "humidity": [6] + list(range(24, 28)),
+    }
+    out: dict[str, float] = {}
+    for name, idx in groups.items():
+        if isinstance(idx, slice):
+            out[name] = float(err[:, idx].mean().detach())
+        else:
+            out[name] = float(err[:, idx].mean().detach())
+    return out

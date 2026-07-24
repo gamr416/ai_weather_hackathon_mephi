@@ -1,4 +1,4 @@
-"""Evaluate checkpoint: metrics JSON + original vs reconstruction plots."""
+"""Evaluate Spatial-FSQ checkpoint: metrics + plots + raw CR."""
 from __future__ import annotations
 
 import argparse
@@ -12,47 +12,42 @@ import torch
 import yaml
 from tqdm import tqdm
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.data.era5 import CHANNEL_ORDER, Era5ZarrDataset, load_stats
-from src.models.perceiver_ae import PerceiverAE
+from src.models.spatial_fsq import SpatialFSQAE, raw_cr_from_bits
 
 PLOT_CHANNELS = ["t2m", "mslp", "tp6h", "tcwv", "T850", "Z850", "U850", "Q850"]
 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
-    p.add_argument("--ckpt", type=Path, required=True, help="best.pt / last.pt")
-    p.add_argument("--data", type=Path, required=True, help="…/era5_….zarr root with train/val/test")
+    p.add_argument("--ckpt", type=Path, required=True)
+    p.add_argument("--data", type=Path, required=True)
     p.add_argument("--split", choices=["val", "test", "train"], default="val")
-    p.add_argument("--stats", type=Path, default=None, help="norm_stats.npz (default: next to ckpt)")
-    p.add_argument("--out", type=Path, default=None, help="output dir (default: <ckpt_dir>/eval_<split>)")
-    p.add_argument("--max-frames", type=int, default=32, help="cap frames for metrics (RAM/time)")
-    p.add_argument("--plot-frames", type=int, default=3, help="how many frames to visualize")
+    p.add_argument("--stats", type=Path, default=None)
+    p.add_argument("--out", type=Path, default=None)
+    p.add_argument("--max-frames", type=int, default=32)
+    p.add_argument("--plot-frames", type=int, default=3)
     p.add_argument("--device", type=str, default=None)
-    p.add_argument(
-        "--crop",
-        action="store_true",
-        help="eval on config crop_size instead of full 360x720 (default: full-frame)",
-    )
+    p.add_argument("--crop", action="store_true")
     return p.parse_args()
 
 
-def build_model(cfg: dict, state: dict, device: torch.device) -> PerceiverAE:
+def build_model(cfg: dict, state: dict, device: torch.device) -> SpatialFSQAE:
     mcfg = cfg["model"]
-    model = PerceiverAE(
+    model = SpatialFSQAE(
         in_channels=28,
         static_channels=int(mcfg.get("static_channels", 4)),
-        patch_size=mcfg["patch_size"],
-        dim=mcfg["dim"],
-        num_latents=mcfg["num_latents"],
-        depth=mcfg["depth"],
-        heads=mcfg["heads"],
-        codebook_size=mcfg["codebook_size"],
-        vq_beta=float(mcfg.get("vq_beta", 0.1)),
-        dropout=mcfg.get("dropout", 0.0),
+        patch_size=int(mcfg["patch_size"]),
+        dim=int(mcfg["dim"]),
+        depth=int(mcfg["depth"]),
+        heads=int(mcfg["heads"]),
+        latent_channels=int(mcfg["latent_channels"]),
+        num_levels=int(mcfg["num_levels"]),
+        dropout=float(mcfg.get("dropout", 0.0)),
     )
     model.load_state_dict(state)
     model.to(device).eval()
@@ -61,12 +56,11 @@ def build_model(cfg: dict, state: dict, device: torch.device) -> PerceiverAE:
 
 @torch.no_grad()
 def collect_errors(
-    model: PerceiverAE,
+    model: SpatialFSQAE,
     ds: Era5ZarrDataset,
     device: torch.device,
     max_frames: int,
-) -> tuple[np.ndarray, np.ndarray, float, list[dict]]:
-    """Return per-channel weighted SSE in norm and physical space."""
+) -> tuple[np.ndarray, np.ndarray, float, list[dict], dict]:
     n = min(len(ds), max_frames)
     sse_norm = np.zeros(28, dtype=np.float64)
     sse_phys = np.zeros(28, dtype=np.float64)
@@ -74,6 +68,8 @@ def collect_errors(
     examples: list[dict] = []
     mean = ds.mean.cpu().numpy().reshape(28, 1, 1)
     std = ds.std.cpu().numpy().reshape(28, 1, 1)
+    rate_bits_total = 0.0
+    cr_list: list[float] = []
 
     for i in tqdm(range(n), desc="eval"):
         batch = ds[i]
@@ -83,6 +79,11 @@ def collect_errors(
         out = model(x, st)
         recon = out["recon"][0].cpu().numpy()
         target = batch["x"].numpy()
+        h, w_img = target.shape[-2:]
+
+        rate_bits = float(out["rate_bits"].cpu())
+        rate_bits_total += rate_bits
+        cr_list.append(raw_cr_from_bits(rate_bits, h, w_img, 28))
 
         recon_phys = recon * std + mean
         target_phys = target * std + mean
@@ -103,11 +104,17 @@ def collect_errors(
                     "recon": recon_phys.astype(np.float32),
                 }
             )
-    return sse_norm, sse_phys, wsum, examples
+
+    codec = {
+        "mean_cr_raw": float(np.mean(cr_list)) if cr_list else None,
+        "mean_rate_bits": rate_bits_total / max(n, 1),
+        "expected_raw_cr": float(model.expected_raw_cr()),
+        "note": "raw CR from uniform indices (no entropy coding yet)",
+    }
+    return sse_norm, sse_phys, wsum, examples, codec
 
 
 def scores_from_sse(sse_norm: np.ndarray, sse_phys: np.ndarray, wsum: float) -> dict:
-    # After train-normalization, lat-weighted RMSE in norm space == NRMSE vs train σ
     rmse_norm = np.sqrt(sse_norm / max(wsum, 1e-12))
     nrmse = rmse_norm.copy()
     rmse_phys = np.sqrt(sse_phys / max(wsum, 1e-12))
@@ -126,11 +133,6 @@ def scores_from_sse(sse_norm: np.ndarray, sse_phys: np.ndarray, wsum: float) -> 
         "S_pressure": pressure,
         "S_all": 0.5 * surface + 0.5 * pressure,
         "per_channel": per,
-        "note": (
-            "nrmse == rmse_norm (inputs are train-normalized). "
-            "rmse_physical is latitude-weighted RMSE in original units. "
-            "VAEformer CI comparison needs official evaluator."
-        ),
     }
 
 
@@ -219,7 +221,7 @@ def plot_history(history_path: Path, out_path: Path) -> None:
             ax.plot(vsteps, vlosses, label="val loss", marker="x", lw=1.0, alpha=0.7)
     ax.set_xlabel("step")
     ax.set_ylabel("loss")
-    ax.set_title("Training curves")
+    ax.set_title("Spatial-FSQ training curves")
     ax.legend()
     ax.grid(True, alpha=0.3)
     fig.savefig(out_path, dpi=140)
@@ -229,7 +231,7 @@ def plot_history(history_path: Path, out_path: Path) -> None:
 def main() -> None:
     args = parse_args()
     ckpt = torch.load(args.ckpt, map_location="cpu", weights_only=False)
-    cfg = ckpt.get("cfg") or yaml.safe_load((ROOT / "configs/perceiver_0p5.yaml").read_text())
+    cfg = ckpt.get("cfg") or yaml.safe_load((ROOT / "configs/spatial_fsq_0p5.yaml").read_text())
     device = torch.device(args.device or ("cuda" if torch.cuda.is_available() else "cpu"))
 
     stats_path = args.stats or (args.ckpt.parent / "norm_stats.npz")
@@ -241,7 +243,6 @@ def main() -> None:
     if not split_path.exists():
         raise SystemExit(f"Missing split: {split_path}")
 
-    # Default: full-frame eval; --crop for training-crop eval
     crop = cfg["data"].get("crop_size", 192) if args.crop else None
     static_path = args.data / "static.zarr"
     ds = Era5ZarrDataset(
@@ -258,17 +259,21 @@ def main() -> None:
     out_dir = args.out or (args.ckpt.parent / f"eval_{args.split}")
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    sse_n, sse_p, wsum, examples = collect_errors(model, ds, device, args.max_frames)
+    sse_n, sse_p, wsum, examples, codec = collect_errors(model, ds, device, args.max_frames)
     metrics = scores_from_sse(sse_n, sse_p, wsum)
-    metrics["split"] = args.split
-    metrics["n_frames"] = min(len(ds), args.max_frames)
-    metrics["ckpt"] = str(args.ckpt)
-    metrics["crop_size"] = crop
+    metrics.update(
+        {
+            "split": args.split,
+            "n_frames": min(len(ds), args.max_frames),
+            "ckpt": str(args.ckpt),
+            "crop_size": crop,
+            "codec": codec,
+        }
+    )
     (out_dir / "metrics.json").write_text(json.dumps(metrics, indent=2))
 
     plot_nrmse_bars(metrics, out_dir / "nrmse_bars.png")
     plot_history(args.ckpt.parent / "history.json", out_dir / "train_curves.png")
-
     for ex in examples[: args.plot_frames]:
         plot_frame_comparison(
             ex["target"],
@@ -280,7 +285,14 @@ def main() -> None:
 
     print(
         json.dumps(
-            {k: metrics[k] for k in ("S_all", "S_surface", "S_pressure", "n_frames", "crop_size")},
+            {
+                "S_all": metrics["S_all"],
+                "S_surface": metrics["S_surface"],
+                "S_pressure": metrics["S_pressure"],
+                "mean_cr_raw": codec["mean_cr_raw"],
+                "expected_raw_cr": codec["expected_raw_cr"],
+                "n_frames": metrics["n_frames"],
+            },
             indent=2,
         )
     )
