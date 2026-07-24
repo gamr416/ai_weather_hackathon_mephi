@@ -62,9 +62,49 @@ ds = xr.open_zarr("data/era5_28ch_0p5_6h.zarr/train.zarr")
 print(ds.fields.shape)  # (512, 28, 360, 720)
 ```
 
-Лог фоновой загрузки: `logs/download_0p5_n512.log`.
+## Обучение (Perceiver-AE)
 
-## Лимиты ТЗ (кратко)
+После того как zarr готов (`train.zarr` внутри `data/...`):
+
+```bash
+source .venv/bin/activate
+# короткий прогон
+python scripts/train.py --config configs/perceiver_0p5.yaml --data data/era5_28ch_0p5_6h_n64.zarr --steps 100
+
+# обычный
+python scripts/train.py --config configs/perceiver_0p5.yaml --data data/era5_28ch_0p5_6h_n128.zarr
+```
+
+Что внутри:
+- `src/models/perceiver_ae.py` — Perceiver-IO encode/decode + VQ bottleneck  
+- `src/data/era5.py` — ленивый loader zarr, lat-weighted loss, random crop  
+- `scripts/train.py` — AdamW, AMP, checkpoint в `runs/`
+
+Лимит: модель должна быть ≤20M params (проверяется при старте).  
+Пока это **скелет кодека** (VQ); полноценный entropy bitstream под CR ×32/×64 — следующий шаг.
+
+Чекпойнты: `runs/perceiver_0p5_n64/best.pt`, `last.pt`, `norm_stats.npz`.
+
+### Оценка и графики
+
+После обучения:
+
+```bash
+python scripts/evaluate.py \
+  --ckpt runs/perceiver_0p5_n64/best.pt \
+  --data data/era5_28ch_0p5_6h_n64.zarr \
+  --split val
+```
+
+В каталог `runs/.../eval_val/` пишется:
+- `metrics.json` — \(S_\mathrm{all}\), surface/pressure, NRMSE по каналам  
+- `nrmse_bars.png` — столбцы по 28 полям  
+- `compare_frameXXXX.png` — truth / recon / diff  
+- `train_curves.png` — кривые из `history.json` (если есть)
+
+Сравнение с **VAEformer** (non-inferiority CI) — когда появится их baseline/evaluator; пока метрики относительные между вашими прогонами.
+
+
 
 - 1 GPU ≤ 24 GB VRAM, ≤ 20M params, ≤ 50k шагов  
 - CR по bitstream ×32/×64 + exact roundtrip  

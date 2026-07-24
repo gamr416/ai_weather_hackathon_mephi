@@ -107,11 +107,26 @@ def remap_0p5(da: xr.DataArray) -> xr.DataArray:
 
 def stack_frame(ds: xr.Dataset, t) -> xr.DataArray:
     """Fetch one timestep once, remap locally → (time=1, channel=28, lat, lon)."""
+    import time as time_mod
+
     surf_names = list(SURFACE.values())
     pres_names = list(PRESSURE_VARS.values())
-    surf = ds[surf_names].sel(time=t).load()
-    pres = ds[pres_names].sel(time=t, level=LEVELS).load()
+    last_err: Exception | None = None
+    surf = pres = None
+    for attempt in range(1, 8):
+        try:
+            surf = ds[surf_names].sel(time=t).load()
+            pres = ds[pres_names].sel(time=t, level=LEVELS).load()
+            break
+        except Exception as e:  # noqa: BLE001 — retry flaky GCS/proxy
+            last_err = e
+            wait = min(60, 2 ** attempt)
+            print(f"  retry {attempt}/7 after {type(e).__name__}: sleep {wait}s", flush=True)
+            time_mod.sleep(wait)
+    else:
+        raise RuntimeError(f"Failed to fetch time={t}") from last_err
 
+    assert surf is not None and pres is not None
     slices: list[xr.DataArray] = []
     for name in surf_names:
         da = remap_0p5(surf[name]).astype(np.float32)
