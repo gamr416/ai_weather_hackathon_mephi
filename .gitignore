@@ -1,0 +1,40 @@
+# Cursor IDE
+.cursor/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# Data / models (large artifacts)
+data/
+datasets/
+*.nc
+*.grib
+*.grb
+*.ckpt
+*.pt
+*.pth
+*.onnx
+wandb/
+runs/
+outputs/
+checkpoints/
