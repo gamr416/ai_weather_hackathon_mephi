@@ -13,7 +13,8 @@
 9. [Perceiver / VAE](04_perceiver_vae.md) — идеи кодека
 10. [Глоссарий](06_glossary.md)
 11. [**Чеклист сдачи / позиция команды**](submission_notes.md) ← эксперт без защиты
-12. [External models](external_models.md) — CRA5 / pretrained shortcut
+12. [**Методология**](methodology.md) ← архитектура, \(N\)-curriculum, результаты, gaps
+13. [External models](external_models.md) — CRA5 / pretrained shortcut
 
 ## Окружение
 
@@ -37,6 +38,7 @@ source .venv/bin/activate   # Python 3.11 + torch cu128
 
 На **одной GPU (≤24 GB)** и **малых выборках** \(N\in\{128\ldots8192\}\) уникальных 6h кадров обучить **AE с квантованным bottleneck** на **28 каналах** нижней атмосферы (8 surface + T/U/V/Z/Q на 1000/925/850/700 hPa), сетки **0.5° и 0.25°**, сжатие **×32–×64** по bitstream, качество **не хуже VAEformer** по формальным CI-критериям, плюс **latent +6h probe** на замороженном энкодере. Главный результат — карта **data efficiency**.
 
+- [methodology.md](methodology.md) — **методология для эксперта**
 - [submission_notes.md](submission_notes.md) — сдача эксперту, только 0.5°, почему не VAEformer as-is
 - [external_models.md](external_models.md) — CRA5 teacher + pretrained shortcut
 - Official NRMSE σ: [`data/ref_stats/SOURCE.md`](../data/ref_stats/SOURCE.md)

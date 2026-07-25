@@ -1,6 +1,7 @@
 # Submission notes
 
-Пакет: [`submission/`](../submission/) · README: [`../README.md`](../README.md).
+Пакет: [`submission/`](../submission/) · README: [`../README.md`](../README.md).  
+**Методология:** [`methodology.md`](methodology.md).
 
 ## Финал: Residual-FSQ **A18+** (19.11 M)
 

@@ -40,4 +40,4 @@
 - **Сетка:** только **0.5°** (360×720). Сравнение 0.25° в ТЗ желательно, но при суточном бюджете и 12 GB сознательно out of scope.
 - **Модель:** Residual-FSQ ~8.5 M + official bitstream CR ∈ [32, 64]; не wrap 405 M VAEformer.
 - **Оценка:** без устной защиты — эксперт смотрит код/метрики/отчёт в чате. Приоритет: один сильный ckpt + reproduce, не полный dual-res suite.
-- Чеклист сдачи: [submission_notes.md](submission_notes.md). Внешние модели: [external_models.md](external_models.md).
+- Чеклист сдачи: [submission_notes.md](submission_notes.md). Методология: [methodology.md](methodology.md). Внешние модели: [external_models.md](external_models.md).

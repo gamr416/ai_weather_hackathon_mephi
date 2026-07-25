@@ -13,7 +13,9 @@
 
 Предыдущий 8.46M (`n512s35k_ft`): full test \(S_\mathrm{all}\) **0.0788**. A18 лучше по качеству при raw CR≈×34.5.
 
-Пакет: [`submission/`](submission/) · [`docs/submission_notes.md`](docs/submission_notes.md) · ТЗ: [`docs/task.md`](docs/task.md).
+Пакет: [`submission/`](submission/) · чеклист: [`docs/submission_notes.md`](docs/submission_notes.md) · ТЗ: [`docs/task.md`](docs/task.md).
+
+**Методология (для эксперта):** [`docs/methodology.md`](docs/methodology.md) — архитектура, curriculum \(N\), loss/CR, результаты, ограничения.
 
 ---
 
