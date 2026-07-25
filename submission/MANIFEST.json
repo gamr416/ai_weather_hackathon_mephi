@@ -12,14 +12,15 @@
   },
   "checkpoint": {
     "path": "submission/artifacts/best.pt",
-    "source_run": "runs/residual_fsq_0p5/20260725_175622_n512s30k",
+    "source_run": "runs/residual_fsq_0p5/20260725_192609_n512s35k_ft",
     "train_N": 512,
-    "steps": 30000,
+    "steps": 35000,
     "warm_start_chain": [
       "n128s9k",
       "n256s25k",
       "n256s50k_ft",
-      "n512s30k"
+      "n512s30k",
+      "n512s35k_ft"
     ],
     "norm_stats": "submission/artifacts/norm_stats.npz",
     "config": "submission/artifacts/config.yaml"
@@ -28,15 +29,15 @@
     "sigma": "submission/ref_stats/sigma_official_28ch.npz",
     "sigma_note": "LadCast ERA5_normal_1979_2017.json std; tcc/tcwv from train-pool",
     "val": {
-      "S_all": 0.0812,
-      "S_surface": 0.0821,
-      "S_pressure": 0.0802,
+      "S_all": 0.0790,
+      "S_surface": 0.0793,
+      "S_pressure": 0.0787,
       "file": "submission/metrics/val_metrics.json"
     },
     "test": {
-      "S_all": 0.0810,
-      "S_surface": 0.0820,
-      "S_pressure": 0.0799,
+      "S_all": 0.0788,
+      "S_surface": 0.0791,
+      "S_pressure": 0.0784,
       "file": "submission/metrics/test_metrics.json"
     },
     "bitstream_val": {
@@ -44,15 +45,44 @@
       "all_exact": true,
       "pad_max_cr": 63.0,
       "file": "submission/metrics/bitstream_val.json"
+    },
+    "probe_6h": {
+      "file": "submission/probe_6h/metrics.json",
+      "pairs": 256,
+      "steps": 5000,
+      "latent_mse": 2.37e-05,
+      "persist_mse": 3.91e-05,
+      "note": "better than persistence in pooled latent space"
     }
+  },
+  "delivery_checklist": {
+    "code": true,
+    "docker": true,
+    "checkpoint": true,
+    "encoder_decoder": true,
+    "bitstream": true,
+    "manifest_times": [
+      "submission/manifest_times_n128.json",
+      "submission/manifest_times_n256.json",
+      "submission/manifest_times_n512.json"
+    ],
+    "metrics_json": true,
+    "resources_documented": true,
+    "quality_vs_N_plot": "submission/plots/quality_vs_N_test.png",
+    "quality_vs_bitrate_plot": "submission/plots/quality_vs_bitrate_test.png",
+    "probe_6h": "submission/probe_6h/",
+    "scope_0p25": "submission/SCOPE_0p25.md (out of scope, declared)"
+  },
+  "container": {
+    "dockerfile": "Dockerfile",
+    "compose": "docker-compose.yml",
+    "image": "mephi-era5-residual-fsq:latest",
+    "build": "docker build -t mephi-era5-residual-fsq:latest .",
+    "run": "docker run --rm -it --gpus all -v $PWD/data:/workspace/data:ro mephi-era5-residual-fsq:latest"
   },
   "resources": {
     "gpu": "RTX 3060 12GB",
     "trainable_params": "8.46M",
     "resolution_delivered": "0.5deg only"
-  },
-  "reproduce": {
-    "evaluate": "python scripts/residual_fsq/evaluate.py --ckpt submission/artifacts/best.pt --data <zarr> --split test --stats submission/artifacts/norm_stats.npz --sigma submission/ref_stats/sigma_official_28ch.npz",
-    "bitstream": "python scripts/residual_fsq/eval_bitstream.py --ckpt submission/artifacts/best.pt --data <zarr> --split val --max-frames 32"
   }
 }

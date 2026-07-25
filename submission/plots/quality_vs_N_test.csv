@@ -1,0 +1,4 @@
+N,S_all,S_surface,S_pressure,n_frames,run,metrics_path
+128,0.13122726844001853,0.1402259186924164,0.12222861818762062,32,20260725_010045_n128s9k,/home/user/ai_weather_hackathon_mephi/runs/residual_fsq_0p5/20260725_010045_n128s9k/eval_test/metrics.json
+256,0.08302819069600126,0.08463233380907564,0.08142404758292687,128,20260725_160856_n256s50k_ft,/home/user/ai_weather_hackathon_mephi/runs/residual_fsq_0p5/20260725_160856_n256s50k_ft/eval_test/metrics.json
+512,0.07875517865629916,0.07908058338493876,0.07842977392765957,128,20260725_192609_n512s35k_ft,/home/user/ai_weather_hackathon_mephi/runs/residual_fsq_0p5/20260725_192609_n512s35k_ft/eval_test/metrics.json

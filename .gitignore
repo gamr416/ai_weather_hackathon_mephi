@@ -36,6 +36,7 @@ logs/
 *.pth
 *.onnx
 !submission/artifacts/*.pt
+!submission/probe_6h/*.pt
 wandb/
 runs/
 outputs/

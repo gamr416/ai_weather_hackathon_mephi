@@ -1,201 +1,201 @@
 {
-  "S_surface": 0.08197674408153022,
-  "S_pressure": 0.07992678113046511,
-  "S_all": 0.08095176260599767,
+  "S_surface": 0.07908058338493876,
+  "S_pressure": 0.07842977392765957,
+  "S_all": 0.07875517865629916,
   "per_channel": {
     "t2m": {
-      "rmse_norm": 0.07026300064541136,
-      "rmse_physical": 1.4787301492658977,
-      "nrmse": 0.06899621045240326,
+      "rmse_norm": 0.06618061327714271,
+      "rmse_physical": 1.3928136775635815,
+      "nrmse": 0.06498742564075671,
       "sigma_official": 21.432048797607422,
       "sigma_source": "ladcast"
     },
     "mslp": {
-      "rmse_norm": 0.07359602940055993,
-      "rmse_physical": 98.96539456682058,
-      "nrmse": 0.07448439580174962,
+      "rmse_norm": 0.07064900278470378,
+      "rmse_physical": 95.00249567436812,
+      "nrmse": 0.0715017963696982,
       "sigma_official": 1328.6728515625,
       "sigma_source": "ladcast"
     },
     "u10": {
-      "rmse_norm": 0.08598645755672354,
-      "rmse_physical": 0.47998589901599203,
-      "nrmse": 0.08815771473247304,
+      "rmse_norm": 0.08401830837356947,
+      "rmse_physical": 0.4689994729141315,
+      "nrmse": 0.08613986749945475,
       "sigma_official": 5.444627285003662,
       "sigma_source": "ladcast"
     },
     "v10": {
-      "rmse_norm": 0.08877626447543681,
-      "rmse_physical": 0.4209893311635525,
-      "nrmse": 0.0900951249415966,
+      "rmse_norm": 0.0867332617604047,
+      "rmse_physical": 0.41130112974306354,
+      "nrmse": 0.08802177140784825,
       "sigma_official": 4.672720432281494,
       "sigma_source": "ladcast"
     },
     "tp6h": {
-      "rmse_norm": 0.06535299783657877,
-      "rmse_physical": 0.0001355468931560138,
-      "nrmse": 0.08155030370108685,
+      "rmse_norm": 0.061796883930100265,
+      "rmse_physical": 0.0001281712497818501,
+      "nrmse": 0.07711282864615031,
       "sigma_official": 0.0016621261602267623,
       "sigma_source": "ladcast"
     },
     "sst": {
-      "rmse_norm": 0.11142066405223727,
-      "rmse_physical": 1.3024833896594734,
-      "nrmse": 0.11113997625239395,
+      "rmse_norm": 0.10764336367852557,
+      "rmse_physical": 1.2583275678457848,
+      "nrmse": 0.10737219155222874,
       "sigma_official": 11.719305992126465,
       "sigma_source": "ladcast"
     },
     "tcwv": {
-      "rmse_norm": 0.07264027133336275,
-      "rmse_physical": 1.2180217045541761,
-      "nrmse": 0.07223155973831938,
+      "rmse_norm": 0.07121550627331885,
+      "rmse_physical": 1.1941314622404788,
+      "nrmse": 0.07081481202488156,
       "sigma_official": 16.862735748291016,
       "sigma_source": "train_pool"
     },
     "tcc": {
-      "rmse_norm": 0.06940611660071139,
-      "rmse_physical": 0.024971293526834647,
-      "nrmse": 0.06915866703221903,
+      "rmse_norm": 0.06693260494321539,
+      "rmse_physical": 0.02408136060391757,
+      "nrmse": 0.06669397393849152,
       "sigma_official": 0.36107251048088074,
       "sigma_source": "train_pool"
     },
     "T1000": {
-      "rmse_norm": 0.07247802646484433,
-      "rmse_physical": 1.2227197152579852,
-      "nrmse": 0.07089801220986708,
+      "rmse_norm": 0.07133746475369333,
+      "rmse_physical": 1.2034781941181465,
+      "nrmse": 0.06978231448807082,
       "sigma_official": 17.246177673339844,
       "sigma_source": "ladcast"
     },
     "T925": {
-      "rmse_norm": 0.07168478828512108,
-      "rmse_physical": 1.1370519782821116,
-      "nrmse": 0.07020508728308132,
+      "rmse_norm": 0.06978571498830678,
+      "rmse_physical": 1.1069291975903865,
+      "nrmse": 0.06834521413034583,
       "sigma_official": 16.196147918701172,
       "sigma_source": "ladcast"
     },
     "T850": {
-      "rmse_norm": 0.06903141982663838,
-      "rmse_physical": 1.0669441833670126,
-      "nrmse": 0.06791807472208311,
+      "rmse_norm": 0.06769395178493491,
+      "rmse_physical": 1.0462723810342236,
+      "nrmse": 0.06660217737959248,
       "sigma_official": 15.709281921386719,
       "sigma_source": "ladcast"
     },
     "T700": {
-      "rmse_norm": 0.06251623070907102,
-      "rmse_physical": 0.9233553945625615,
-      "nrmse": 0.061914393387637406,
+      "rmse_norm": 0.061876665008860576,
+      "rmse_physical": 0.9139091028154678,
+      "nrmse": 0.06128098459755714,
       "sigma_official": 14.913420677185059,
       "sigma_source": "ladcast"
     },
     "U1000": {
-      "rmse_norm": 0.08688141597802984,
-      "rmse_physical": 0.536068827069695,
-      "nrmse": 0.08888750712499054,
+      "rmse_norm": 0.08446067091043077,
+      "rmse_physical": 0.5211325358345339,
+      "nrmse": 0.08641086676363315,
       "sigma_official": 6.030868053436279,
       "sigma_source": "ladcast"
     },
     "U925": {
-      "rmse_norm": 0.09272132731422082,
-      "rmse_physical": 0.7417494867679981,
-      "nrmse": 0.095057801763421,
+      "rmse_norm": 0.09164835715030649,
+      "rmse_physical": 0.7331659697548105,
+      "nrmse": 0.09395779391275465,
       "sigma_official": 7.8031415939331055,
       "sigma_source": "ladcast"
     },
     "U850": {
-      "rmse_norm": 0.09533610126318483,
-      "rmse_physical": 0.7878382609816725,
-      "nrmse": 0.09776991816891696,
+      "rmse_norm": 0.09361638705734676,
+      "rmse_physical": 0.7736268896518811,
+      "nrmse": 0.0960063015983654,
       "sigma_official": 8.058084487915039,
       "sigma_source": "ladcast"
     },
     "U700": {
-      "rmse_norm": 0.08413455483833225,
-      "rmse_physical": 0.7794893652013338,
-      "nrmse": 0.08597749654454387,
+      "rmse_norm": 0.08247169514021038,
+      "rmse_physical": 0.7640833115338107,
+      "nrmse": 0.08427821239122844,
       "sigma_official": 9.066202163696289,
       "sigma_source": "ladcast"
     },
     "V1000": {
-      "rmse_norm": 0.08801637480867093,
-      "rmse_physical": 0.4642767327232581,
-      "nrmse": 0.08915248351786423,
+      "rmse_norm": 0.08615628029058843,
+      "rmse_physical": 0.45446493791778136,
+      "nrmse": 0.08726837903228075,
       "sigma_official": 5.207670211791992,
       "sigma_source": "ladcast"
     },
     "V925": {
-      "rmse_norm": 0.09925411790575113,
-      "rmse_physical": 0.638960310512989,
-      "nrmse": 0.10051551776510398,
+      "rmse_norm": 0.09634596431733075,
+      "rmse_physical": 0.6202387225875166,
+      "nrmse": 0.09757040509886816,
       "sigma_official": 6.356832504272461,
       "sigma_source": "ladcast"
     },
     "V850": {
-      "rmse_norm": 0.1011620045815153,
-      "rmse_physical": 0.6295192936506779,
-      "nrmse": 0.10221961800348413,
+      "rmse_norm": 0.09869587810129486,
+      "rmse_physical": 0.6141728775135125,
+      "nrmse": 0.09972770900071726,
       "sigma_official": 6.1584978103637695,
       "sigma_source": "ladcast"
     },
     "V700": {
-      "rmse_norm": 0.09323259156039125,
-      "rmse_physical": 0.6352304307823483,
-      "nrmse": 0.09357505838023039,
+      "rmse_norm": 0.09086983003306823,
+      "rmse_physical": 0.6191320042531795,
+      "nrmse": 0.0912036178300012,
       "sigma_official": 6.788458824157715,
       "sigma_source": "ladcast"
     },
     "Z1000": {
-      "rmse_norm": 0.06857599735301849,
-      "rmse_physical": 74.55349673293301,
-      "nrmse": 0.06966062046657721,
+      "rmse_norm": 0.06630162235198092,
+      "rmse_physical": 72.08087182079592,
+      "nrmse": 0.06735027161496529,
       "sigma_official": 1070.23876953125,
       "sigma_source": "ladcast"
     },
     "Z925": {
-      "rmse_norm": 0.05801860823263048,
-      "rmse_physical": 72.60789432721317,
-      "nrmse": 0.05912924799364278,
+      "rmse_norm": 0.056512737424878494,
+      "rmse_physical": 70.72335921142285,
+      "nrmse": 0.05759455062709857,
       "sigma_official": 1227.9522705078125,
       "sigma_source": "ladcast"
     },
     "Z850": {
-      "rmse_norm": 0.05290399383832503,
-      "rmse_physical": 79.13487507935668,
-      "nrmse": 0.05380508189621002,
+      "rmse_norm": 0.052925337871618794,
+      "rmse_physical": 79.16680191679936,
+      "nrmse": 0.05382678946953427,
       "sigma_official": 1470.76953125,
       "sigma_source": "ladcast"
     },
     "Z700": {
-      "rmse_norm": 0.050889339425372354,
-      "rmse_physical": 110.19980849059121,
-      "nrmse": 0.0514763100802781,
+      "rmse_norm": 0.049626207487590564,
+      "rmse_physical": 107.46452237625489,
+      "nrmse": 0.05019860880195077,
       "sigma_official": 2140.786865234375,
       "sigma_source": "ladcast"
     },
     "Q1000": {
-      "rmse_norm": 0.07103656350641585,
-      "rmse_physical": 0.0004223668293749383,
-      "nrmse": 0.07159617337969817,
+      "rmse_norm": 0.07068961203675699,
+      "rmse_physical": 0.00042030392470765514,
+      "nrmse": 0.07124648663833365,
       "sigma_official": 0.005899293348193169,
       "sigma_source": "ladcast"
     },
     "Q925": {
-      "rmse_norm": 0.08623927435964641,
-      "rmse_physical": 0.00044185429251054073,
-      "nrmse": 0.08753835317121089,
+      "rmse_norm": 0.0852178984125639,
+      "rmse_physical": 0.0004366211855167945,
+      "nrmse": 0.08650159156005066,
       "sigma_official": 0.005047550890594721,
       "sigma_source": "ladcast"
     },
     "Q850": {
-      "rmse_norm": 0.08733724674139536,
-      "rmse_physical": 0.0003642145870988752,
-      "nrmse": 0.0895305689870561,
+      "rmse_norm": 0.08621079325121878,
+      "rmse_physical": 0.00035951704045270483,
+      "nrmse": 0.08837582659349927,
       "sigma_official": 0.004068047273904085,
       "sigma_source": "ladcast"
     },
     "Q700": {
-      "rmse_norm": 0.08733164078534363,
-      "rmse_physical": 0.00023013997828769348,
-      "nrmse": 0.09170829776340486,
+      "rmse_norm": 0.08672130641733052,
+      "rmse_physical": 0.00022853160163510057,
+      "nrmse": 0.09106737702434357,
       "sigma_official": 0.002509478246793151,
       "sigma_source": "ladcast"
     }
@@ -234,7 +234,7 @@
   "note": "nrmse = rmse_physical / sigma_official (LadCast 1979\u20132017 + train_pool gaps). rmse_norm is train-normalization diagnostic only; scores use official NRMSE.",
   "split": "test",
   "n_frames": 128,
-  "ckpt": "runs/residual_fsq_0p5/20260725_175622_n512s30k/best.pt",
+  "ckpt": "runs/residual_fsq_0p5/20260725_192609_n512s35k_ft/best.pt",
   "crop_size": null,
   "codec": {
     "mean_cr_raw": 56.0,

@@ -1,0 +1,14 @@
+{
+  "ckpt": "runs/residual_fsq_0p5/20260725_192609_n512s35k_ft/best.pt",
+  "pairs": 256,
+  "steps": 5000,
+  "nparams": 41312,
+  "dim": 96,
+  "final": {
+    "step": 5000,
+    "mse": 2.373404822719749e-05,
+    "persist_mse": 3.912993270205334e-05
+  },
+  "metric_space": "latent_mse",
+  "note": "Probe metrics are MSE in pooled latent space vs persistence; not physical-field NRMSE / \u03c3_official. Reconstruction quality uses scripts/residual_fsq/evaluate.py with data/ref_stats/sigma_official_28ch.npz."
+}

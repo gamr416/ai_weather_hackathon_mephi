@@ -1,0 +1,16 @@
+# Build context exclusions (keep image lean)
+.venv/
+.git/
+runs/
+data/
+**/__pycache__/
+*.pyc
+.cursor/
+agent-transcripts/
+third_party/checkpoints/
+third_party/CRA5/
+*.pt
+!submission/artifacts/best.pt
+wandb/
+outputs/
+logs/

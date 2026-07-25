@@ -22,5 +22,16 @@ cp -f "$RUN/eval_val/nrmse_bars.png" "$SUB/plots/" 2>/dev/null || true
 cp -f "$RUN/eval_val/train_curves.png" "$SUB/plots/" 2>/dev/null || true
 cp -f data/ref_stats/sigma_official_28ch.npz "$SUB/ref_stats/" 2>/dev/null || true
 cp -f data/ref_stats/ERA5_normal_1979_2017.json "$SUB/ref_stats/" 2>/dev/null || true
+# time manifest from zarr if present
+DATA_ROOT=$(python - <<PY
+import yaml
+from pathlib import Path
+cfg = yaml.safe_load(Path("$RUN/config.yaml").read_text())
+print(cfg.get("data", {}).get("root", ""))
+PY
+)
+if [[ -n "$DATA_ROOT" && -f "$DATA_ROOT/manifest.json" ]]; then
+  cp -f "$DATA_ROOT/manifest.json" "$SUB/manifest_times_from_run.json"
+fi
 echo "Packed $RUN → $SUB"
 ls -lh "$SUB/artifacts/best.pt"

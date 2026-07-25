@@ -1,0 +1,21 @@
+services:
+  residual-fsq:
+    build: .
+    image: mephi-era5-residual-fsq:latest
+    working_dir: /workspace
+    volumes:
+      # Mount WeatherBench zarr locally (not in image)
+      - ./data:/workspace/data:ro
+      # Optional: write eval outputs back to host
+      - ./submission_out:/workspace/submission_out
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # override example:
+    # command: ["python", "scripts/residual_fsq/evaluate.py", "--ckpt", "submission/artifacts/best.pt", "--data", "data/era5_28ch_0p5_6h_n512.zarr", "--stats", "submission/artifacts/norm_stats.npz", "--sigma", "submission/ref_stats/sigma_official_28ch.npz", "--split", "test", "--max-frames", "8"]

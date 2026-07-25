@@ -21,17 +21,17 @@ model:
   dropout: 0.12
   drop_path: 0.12
 train:
-  seed: 2
+  seed: 3
   batch_size: 2
   grad_accum: 2
-  lr: 8.0e-05
+  lr: 4.0e-05
   weight_decay: 0.06
-  warmup_steps: 1000
-  max_steps: 30000
+  warmup_steps: 500
+  max_steps: 35000
   rate_weight: 0.018
-  rate_warmup_steps: 2500
+  rate_warmup_steps: 1000
   commit_weight: 0.05
-  hf_weight: 0.12
+  hf_weight: 0.14
   sst_land_weight: 1.5
   grad_clip: 0.8
   log_every: 20
@@ -40,7 +40,7 @@ train:
   ckpt_every: 2500
   num_workers: 0
   runs_root: runs/residual_fsq_0p5
-  run_name: n512s30k
+  run_name: n512s35k_ft
   select_full_frame: true
   channel_weights:
     t2m: 1.2
@@ -48,7 +48,7 @@ train:
     u10: 3.5
     v10: 3.5
     tp6h: 8.0
-    sst: 7.0
+    sst: 8.0
     tcwv: 2.0
     tcc: 5.0
     T1000: 1.0
@@ -71,4 +71,4 @@ train:
     Q925: 3.5
     Q850: 3.5
     Q700: 4.0
-  out_dir: runs/residual_fsq_0p5/20260725_175622_n512s30k
+  out_dir: runs/residual_fsq_0p5/20260725_192609_n512s35k_ft

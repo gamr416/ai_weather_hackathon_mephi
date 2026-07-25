@@ -1,0 +1,32 @@
+[
+  {
+    "N": 128,
+    "run": "20260725_010045_n128s9k",
+    "S_all": 0.1317386370068275,
+    "S_surface": 0.14071285361598299,
+    "S_pressure": 0.12276442039767202,
+    "n_frames": 32,
+    "sigma_path": "/home/user/ai_weather_hackathon_mephi/data/ref_stats/sigma_official_28ch.npz",
+    "metrics_path": "/home/user/ai_weather_hackathon_mephi/runs/residual_fsq_0p5/20260725_010045_n128s9k/eval_val/metrics.json"
+  },
+  {
+    "N": 256,
+    "run": "20260725_160856_n256s50k_ft",
+    "S_all": 0.08322868301369515,
+    "S_surface": 0.08477522117342054,
+    "S_pressure": 0.08168214485396977,
+    "n_frames": 128,
+    "sigma_path": "/home/user/ai_weather_hackathon_mephi/data/ref_stats/sigma_official_28ch.npz",
+    "metrics_path": "/home/user/ai_weather_hackathon_mephi/runs/residual_fsq_0p5/20260725_160856_n256s50k_ft/eval_val/metrics.json"
+  },
+  {
+    "N": 512,
+    "run": "20260725_192609_n512s35k_ft",
+    "S_all": 0.07900356455898452,
+    "S_surface": 0.07926561789058774,
+    "S_pressure": 0.0787415112273813,
+    "n_frames": 128,
+    "sigma_path": "/home/user/ai_weather_hackathon_mephi/data/ref_stats/sigma_official_28ch.npz",
+    "metrics_path": "/home/user/ai_weather_hackathon_mephi/runs/residual_fsq_0p5/20260725_192609_n512s35k_ft/eval_val/metrics.json"
+  }
+]
