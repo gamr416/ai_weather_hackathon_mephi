@@ -1,0 +1,138 @@
+{
+  "ckpt": "runs/residual_fsq_0p5/20260725_175622_n512s30k/best.pt",
+  "split": "val",
+  "n_frames": 16,
+  "mean_cr_official": 63.0,
+  "all_exact": true,
+  "frames": [
+    {
+      "frame": 0,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 1,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 2,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 3,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 4,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 5,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 6,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 7,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 8,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 9,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 10,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 11,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 12,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 13,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 14,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    },
+    {
+      "frame": 15,
+      "bytes": 460800,
+      "cr_official": 63.0,
+      "cr_raw": 56.0,
+      "exact_indices": true,
+      "recon_mse_vs_forward": 0.0
+    }
+  ],
+  "formula": "CR = 32*T*C*H*W / (8*B)"
+}

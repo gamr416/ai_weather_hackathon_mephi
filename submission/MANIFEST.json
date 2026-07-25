@@ -1,0 +1,58 @@
+{
+  "team": "ai_weather_hackathon_mephi",
+  "task": "ERA5 28-channel AE codec (MEPhI hackathon)",
+  "model": {
+    "name": "ResidualFSQAE",
+    "class": "src.models.residual_fsq.ResidualFSQAE",
+    "params_M": 8.46,
+    "param_limit_M": 20,
+    "grid": "0.5deg",
+    "shape": [28, 360, 720],
+    "channels": 28
+  },
+  "checkpoint": {
+    "path": "submission/artifacts/best.pt",
+    "source_run": "runs/residual_fsq_0p5/20260725_175622_n512s30k",
+    "train_N": 512,
+    "steps": 30000,
+    "warm_start_chain": [
+      "n128s9k",
+      "n256s25k",
+      "n256s50k_ft",
+      "n512s30k"
+    ],
+    "norm_stats": "submission/artifacts/norm_stats.npz",
+    "config": "submission/artifacts/config.yaml"
+  },
+  "metrics_reported": {
+    "sigma": "submission/ref_stats/sigma_official_28ch.npz",
+    "sigma_note": "LadCast ERA5_normal_1979_2017.json std; tcc/tcwv from train-pool",
+    "val": {
+      "S_all": 0.0812,
+      "S_surface": 0.0821,
+      "S_pressure": 0.0802,
+      "file": "submission/metrics/val_metrics.json"
+    },
+    "test": {
+      "S_all": 0.0810,
+      "S_surface": 0.0820,
+      "S_pressure": 0.0799,
+      "file": "submission/metrics/test_metrics.json"
+    },
+    "bitstream_val": {
+      "mean_cr_official": 63.0,
+      "all_exact": true,
+      "pad_max_cr": 63.0,
+      "file": "submission/metrics/bitstream_val.json"
+    }
+  },
+  "resources": {
+    "gpu": "RTX 3060 12GB",
+    "trainable_params": "8.46M",
+    "resolution_delivered": "0.5deg only"
+  },
+  "reproduce": {
+    "evaluate": "python scripts/residual_fsq/evaluate.py --ckpt submission/artifacts/best.pt --data <zarr> --split test --stats submission/artifacts/norm_stats.npz --sigma submission/ref_stats/sigma_official_28ch.npz",
+    "bitstream": "python scripts/residual_fsq/eval_bitstream.py --ckpt submission/artifacts/best.pt --data <zarr> --split val --max-frames 32"
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "out": "/home/user/ai_weather_hackathon_mephi/data/ref_stats/sigma_official_28ch.npz",
+  "ladcast": "/home/user/ai_weather_hackathon_mephi/data/ref_stats/ERA5_normal_1979_2017.json",
+  "train_zarr": "/home/user/ai_weather_hackathon_mephi/data/era5_28ch_0p5_6h.zarr/train.zarr",
+  "channels": {
+    "t2m": {
+      "mean": 278.20916748046875,
+      "std": 21.432048797607422,
+      "source": "ladcast"
+    },
+    "mslp": {
+      "mean": 100958.6953125,
+      "std": 1328.6728515625,
+      "source": "ladcast"
+    },
+    "u10": {
+      "mean": -0.05221761018037796,
+      "std": 5.444627285003662,
+      "source": "ladcast"
+    },
+    "v10": {
+      "mean": 0.18821093440055847,
+      "std": 4.672720432281494,
+      "source": "ladcast"
+    },
+    "tp6h": {
+      "mean": 0.0005955639644525945,
+      "std": 0.0016621261602267623,
+      "source": "ladcast"
+    },
+    "sst": {
+      "mean": 286.5331726074219,
+      "std": 11.719305992126465,
+      "source": "ladcast"
+    },
+    "tcwv": {
+      "mean": 22.917728424072266,
+      "std": 16.862735748291016,
+      "source": "train_pool"
+    },
+    "tcc": {
+      "mean": 0.6174367070198059,
+      "std": 0.36107251048088074,
+      "source": "train_pool"
+    },
+    "T1000": {
+      "mean": 280.79205322265625,
+      "std": 17.246177673339844,
+      "source": "ladcast"
+    },
+    "T925": {
+      "mean": 277.1494140625,
+      "std": 16.196147918701172,
+      "source": "ladcast"
+    },
+    "T850": {
+      "mean": 274.3547668457031,
+      "std": 15.709281921386719,
+      "source": "ladcast"
+    },
+    "T700": {
+      "mean": 267.19329833984375,
+      "std": 14.913420677185059,
+      "source": "ladcast"
+    },
+    "U1000": {
+      "mean": -0.03447651118040085,
+      "std": 6.030868053436279,
+      "source": "ladcast"
+    },
+    "U925": {
+      "mean": 0.6109135746955872,
+      "std": 7.8031415939331055,
+      "source": "ladcast"
+    },
+    "U850": {
+      "mean": 1.4056543111801147,
+      "std": 8.058084487915039,
+      "source": "ladcast"
+    },
+    "U700": {
+      "mean": 3.316849946975708,
+      "std": 9.066202163696289,
+      "source": "ladcast"
+    },
+    "V1000": {
+      "mean": 0.18585865199565887,
+      "std": 5.207670211791992,
+      "source": "ladcast"
+    },
+    "V925": {
+      "mean": 0.20433111488819122,
+      "std": 6.356832504272461,
+      "source": "ladcast"
+    },
+    "V850": {
+      "mean": 0.14231513440608978,
+      "std": 6.1584978103637695,
+      "source": "ladcast"
+    },
+    "V700": {
+      "mean": 0.021293140947818756,
+      "std": 6.788458824157715,
+      "source": "ladcast"
+    },
+    "Z1000": {
+      "mean": 735.4977416992188,
+      "std": 1070.23876953125,
+      "source": "ladcast"
+    },
+    "Z925": {
+      "mean": 7008.56982421875,
+      "std": 1227.9522705078125,
+      "source": "ladcast"
+    },
+    "Z850": {
+      "mean": 13739.40625,
+      "std": 1470.76953125,
+      "source": "ladcast"
+    },
+    "Z700": {
+      "mean": 28909.353515625,
+      "std": 2140.786865234375,
+      "source": "ladcast"
+    },
+    "Q1000": {
+      "mean": 0.006978759076446295,
+      "std": 0.005899293348193169,
+      "source": "ladcast"
+    },
+    "Q925": {
+      "mean": 0.005989197641611099,
+      "std": 0.005047550890594721,
+      "source": "ladcast"
+    },
+    "Q850": {
+      "mean": 0.004543077666312456,
+      "std": 0.004068047273904085,
+      "source": "ladcast"
+    },
+    "Q700": {
+      "mean": 0.0024150963872671127,
+      "std": 0.002509478246793151,
+      "source": "ladcast"
+    }
+  }
+}

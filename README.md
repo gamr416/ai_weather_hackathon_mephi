@@ -1,113 +1,146 @@
-# Хакатон МИФИ — сжатие ERA5 (AE)
+# Хакатон МИФИ — ERA5 codec (Residual-FSQ)
 
-Компактное 28-канальное представление нижней атмосферы: сжатие **×32–×64**, обучение на **одной GPU** и малых выборках \(N\).
+Решение для экспертов: компактный автоэнкодер **28 каналов нижней атмосферы** на сетке **0.5°**, сжатие bitstream **×32–×64**, обучение на **одной GPU** и малых \(N\).
 
-Полное ТЗ и база знаний: [`docs/`](docs/README.md) → [`docs/task.md`](docs/task.md).
+| | |
+|---|---|
+| Модель | `ResidualFSQAE` — coarse FSQ + fine residual FSQ |
+| Params | **8.46 M** (лимит ≤20 M) |
+| Сетка | 0.5° · 28×360×720 |
+| Лучший ckpt | [`submission/artifacts/best.pt`](submission/artifacts/best.pt) |
+| test \(S_\mathrm{all}\) | **0.081** |
+| Official CR | **×63.0** (pad ≤×63) · exact index roundtrip |
+| σ (NRMSE) | LadCast 1979–2017 (+ train-pool `tcc`/`tcwv`) |
 
-## Окружение
+Пакет сдачи: [`submission/`](submission/) · чеклист: [`docs/submission_notes.md`](docs/submission_notes.md) · ТЗ: [`docs/task.md`](docs/task.md).
+
+---
+
+## Для экспертов (быстрый путь)
+
+### 1. Окружение
 
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -U pip
-pip install torch --index-url https://download.pytorch.org/whl/cu128   # если нужна CUDA
+pip install torch --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements.txt
-pip install gcsfs   # доступ к WeatherBench 2 / GCS
 ```
 
-## Данные (0.5°)
+### 2. Что лежит в `submission/`
 
-Источник: WeatherBench 2 ERA5 Zarr (`gs://weatherbench2/...`).  
-Скрипт: [`scripts/download_era5_0p5.py`](scripts/download_era5_0p5.py).
+```
+submission/
+  MANIFEST.json              # сводка: метрики, пути, ресурсы
+  artifacts/
+    best.pt                  # финальный checkpoint (~33 MB)
+    config.yaml              # архитектура / train cfg
+    norm_stats.npz           # train mean/std (нормализация входа)
+  ref_stats/
+    sigma_official_28ch.npz  # знаменатель NRMSE (LadCast)
+    ERA5_normal_1979_2017.json
+  metrics/
+    val_metrics.json
+    test_metrics.json
+    bitstream_val.json       # CR + exact roundtrip
+  plots/
+    nrmse_bars.png
+    train_curves.png
+    compare_frame0000.png
+```
 
-### Сплиты (по ТЗ)
+### 3. Метрики (как в ТЗ)
 
-| Сплит | Годы | По умолчанию |
-|-------|------|--------------|
-| train | 2014–2019 | 512 кадров |
-| val | 2020 | 128 |
-| test | 2021 | 128 |
+- **NRMSE** по каждому полю: \(\mathrm{RMSE}_f^{\mathrm{phys}} / \sigma_f\), где \(\sigma\) из LadCast  
+  (`submission/ref_stats/sigma_official_28ch.npz`), **не** из мини-train.
+- Агрегаты: \(S_\mathrm{surface}\), \(S_\mathrm{pressure}\), \(S_\mathrm{all}\).
+- **Official CR** = \(32\,T\,C\,H\,W / (8\,B)\) по zlib-bitstream индексов FSQ.  
+  Если zlib жмёт сильнее ×64, encoder **паддит** bitstream до CR ≤ **×63** (запас до лимита); decode читает `payload_len` из header → exact roundtrip сохраняется.
 
-Сезонно сбалансированная выборка, сетка **0.5°** (360×720), 28 каналов.
+Заявленные цифры (N=512, run `n512s30k`):
 
-### GCS из РФ
+| Split | \(S_\mathrm{all}\) | \(S_\mathrm{surface}\) | \(S_\mathrm{pressure}\) |
+|-------|--------------------|------------------------|-------------------------|
+| val   | 0.0812             | 0.0821                 | 0.0802                  |
+| test  | **0.0810**         | 0.0820                 | 0.0799                  |
+| bitstream val | official CR **×63.0**, `all_exact=true` | | |
 
-Бакет Google часто недоступен напрямую. Нужен VPN/proxy, затем:
+### 4. Пересчёт метрик (нужен val/test zarr)
+
+Данные WeatherBench 2 ERA5 0.5° (не в git; ~GB). Пример:
 
 ```bash
-proxyon          # http://127.0.0.1:12334 (Hiddify и т.п.)
-source .venv/bin/activate
-python scripts/download_era5_0p5.py --train-n 512 --val-n 128 --test-n 128
+# скачать test/val (нужен доступ к GCS; из РФ — proxy)
+python scripts/download_era5_0p5.py --train-n 512 --val-n 128 --test-n 128 \
+  --out data/era5_28ch_0p5_6h_n512.zarr
+
+python scripts/residual_fsq/evaluate.py \
+  --ckpt submission/artifacts/best.pt \
+  --data data/era5_28ch_0p5_6h_n512.zarr \
+  --stats submission/artifacts/norm_stats.npz \
+  --sigma submission/ref_stats/sigma_official_28ch.npz \
+  --split test --max-frames 128
+
+python scripts/residual_fsq/eval_bitstream.py \
+  --ckpt submission/artifacts/best.pt \
+  --data data/era5_28ch_0p5_6h_n512.zarr \
+  --split val --max-frames 32
 ```
 
-Скрипт сам подставляет proxy `127.0.0.1:12334`, если переменные окружения пустые.  
-Важно: `gcsfs` ходит через proxy только при `session_kwargs={"trust_env": True}` (уже в скрипте).
-
-### Результат
-
-```
-data/era5_28ch_0p5_6h.zarr/
-  train.zarr / val.zarr / test.zarr / static.zarr
-  manifest.json
-```
-
-Форма кадра: `(time, channel=28, lat=360, lon=720)`.  
-Ориентир по месту: **~17 GiB** для 512+128+128. Каталог `data/` в git не коммитится.
-
-Проверка:
+Encode / decode одного кадра:
 
 ```python
-import xarray as xr
-ds = xr.open_zarr("data/era5_28ch_0p5_6h.zarr/train.zarr")
-print(ds.fields.shape)  # (512, 28, 360, 720)
+import torch
+from src.models.residual_fsq import ResidualFSQAE
+# см. scripts/residual_fsq/evaluate.py — build_model + model.compress / decompress
 ```
 
-## Обучение (Perceiver-AE)
+### 5. Метод (кратко)
 
-После того как zarr готов (`train.zarr` внутри `data/...`):
+1. **Residual-FSQ**: coarse patch-FSQ (глобальная структура) + fine residual-FSQ (детали ветра/влаги/осадков).
+2. **Data efficiency**: цепочка warm-start \(N=128\to256\to512\), без weather-pretraining на сторонних архивах.
+3. **Не сдаём** VAEformer (~405 M) as-is: лимит ≤20 M trainable; CRA5 только как optional teacher (не в финальном графе).
+4. Scope: **только 0.5°** (12 GB GPU / сутки хакатона). 0.25° — out of scope.
+5. Latent +6h probe: `scripts/probe/latent_probe.py` (MSE в latent vs persistence).
+
+Non-inferiority CI vs VAEformer (таблица 3 ТЗ) **не заполнена**: нет официального baseline VAEformer на тех же 28ch/0.5°/том же тесте. NRMSE нормируется на климатологическое σ (LadCast), как уточнили организаторы.
+
+### 6. Воспроизведение обучения
 
 ```bash
-source .venv/bin/activate
-# короткий прогон
-python scripts/train.py --config configs/perceiver_0p5.yaml --data data/era5_28ch_0p5_6h_n64.zarr --steps 100 --run-name smoke
-
-# обычный
-python scripts/train.py --config configs/perceiver_0p5.yaml --data data/era5_28ch_0p5_6h_n64.zarr --run-name n64
+python scripts/residual_fsq/train.py \
+  --config configs/residual_fsq_0p5_n512_s30k.yaml \
+  --data data/era5_28ch_0p5_6h_n512.zarr \
+  --steps 30000 \
+  --init-ckpt <prev_best.pt>
 ```
 
-Каждый прогон → новая папка `runs/perceiver_0p5/<YYYYMMDD_HHMMSS>_<tag>/` (старые не трогаются). Внутри: `config.yaml`, `run_meta.json`, `best.pt`, `norm_stats.npz`, …
-
-Что внутри:
-- `src/models/perceiver_ae.py` — Perceiver-IO encode/decode + VQ bottleneck  
-- `src/data/era5.py` — ленивый loader zarr, lat-weighted loss, random crop  
-- `scripts/train.py` — AdamW, AMP, checkpoint в `runs/`
-
-Лимит: модель должна быть ≤20M params (проверяется при старте).  
-Пока это **скелет кодека** (VQ); полноценный entropy bitstream под CR ×32/×64 — следующий шаг.
-
-### Оценка и графики
-
-После обучения (по умолчанию **full-frame** 360×720), подставь путь конкретного прогона:
+Перепаковка `submission/` после нового eval:
 
 ```bash
-python scripts/evaluate.py \
-  --ckpt runs/perceiver_0p5/20260724_211500_n64/best.pt \
-  --data data/era5_28ch_0p5_6h_n64.zarr \
-  --split val
+bash scripts/pack_submission.sh runs/residual_fsq_0p5/<run>
 ```
 
-Для eval на training-crop: добавь `--crop`.
+---
 
-В каталог `runs/.../eval_val/` пишется:
-- `metrics.json` — \(S_\mathrm{all}\), surface/pressure, NRMSE (= rmse в norm-space) + physical RMSE  
-- `nrmse_bars.png`, `compare_frame*.png`, `train_curves.png`
+## Структура репозитория
 
-Checkpoint `best.pt` выбирается по **val_recon** (не по VQ).  
-Сравнение с VAEformer CI — когда появится их baseline/evaluator.
+| Путь | Назначение |
+|------|------------|
+| `src/models/residual_fsq.py` | модель |
+| `src/codec/bitstream.py` | zlib bitstream + pad CR≤63 |
+| `src/metrics/` | official σ, scores |
+| `scripts/residual_fsq/` | train / evaluate / bitstream |
+| `scripts/probe/` | latent +6h probe |
+| `configs/` | yaml прогонов |
+| `docs/` | ТЗ и методология |
+| `submission/` | артефакты для эксперта |
 
+---
 
+## Ресурсы
 
-
-- 1 GPU ≤ 24 GB VRAM, ≤ 20M params, ≤ 50k шагов  
-- CR по bitstream ×32/×64 + exact roundtrip  
-- + latent probe +6h на замороженном encoder  
+- GPU: RTX 3060 12 GB  
+- Trainable: 8.46 M  
+- Бюджет: один GPU, порядок \(10^4\)–\(5\cdot10^4\) шагов на финальных прогонах  

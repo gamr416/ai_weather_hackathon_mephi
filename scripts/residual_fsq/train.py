@@ -30,6 +30,7 @@ from src.models.residual_fsq import (
     group_recon_stats,
     high_freq_grad_penalty,
     latitude_weighted_mse_sst_ocean,
+    sst_land_zero_loss,
 )
 
 
@@ -41,6 +42,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--device", type=str, default=None)
     p.add_argument("--run-name", type=str, default=None)
     p.add_argument("--out-dir", type=Path, default=None)
+    p.add_argument("--init-ckpt", type=Path, default=None, help="Warm-start student weights")
     return p.parse_args()
 
 
@@ -119,14 +121,39 @@ def compute_losses(
     rate_w: float,
     commit_w: float,
     hf_w: float,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    sst_land_w: float = 1.0,
+    teacher: torch.Tensor | None = None,
+    teacher_w: float = 0.0,
+    teacher_mask: torch.Tensor | None = None,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     rec = latitude_weighted_mse_sst_ocean(out["recon"], x, w, channel_w, static=st)
     bsz, _, h, w_img = x.shape
     input_bits = 32.0 * 28 * h * w_img * bsz
     rate_norm = out["rate_bits"] / max(input_bits, 1.0)
     hf = high_freq_grad_penalty(out["recon"], x, lat_weight=w) if hf_w > 0 else x.new_zeros(())
-    loss = rec + rate_w * rate_norm + commit_w * out["commit"] + hf_w * hf
-    return loss, rec, rate_norm, hf
+    raw = out.get("recon_raw", out["recon"])
+    land = sst_land_zero_loss(raw, st, w) if sst_land_w > 0 else x.new_zeros(())
+    teach = x.new_zeros(())
+    if teacher is not None and teacher_w > 0:
+        # lat-weighted MSE on overlap channels only
+        diff2 = (out["recon"] - teacher).pow(2)
+        if teacher_mask is not None:
+            m = teacher_mask.view(1, -1, 1, 1).to(diff2.device, diff2.dtype)
+            diff2 = diff2 * m
+            denom = m.sum().clamp_min(1.0)
+        else:
+            denom = float(diff2.shape[1])
+        w_lat = w.view(w.shape[0], 1, -1, 1)
+        teach = (diff2 * w_lat).sum() / (w_lat.sum() * denom * diff2.shape[-1] + 1e-8)
+    loss = (
+        rec
+        + rate_w * rate_norm
+        + commit_w * out["commit"]
+        + hf_w * hf
+        + sst_land_w * land
+        + teacher_w * teach
+    )
+    return loss, rec, rate_norm, hf, land, teach
 
 
 @torch.no_grad()
@@ -138,22 +165,39 @@ def evaluate(
     commit_w: float,
     hf_w: float,
     channel_w: torch.Tensor,
+    sst_land_w: float = 1.0,
+    teacher_w: float = 0.0,
+    teacher_mask: torch.Tensor | None = None,
 ) -> dict:
     model.eval()
-    tot_rec = tot_rate = tot_commit = tot_cr = tot_hf = n = 0.0
+    tot_rec = tot_rate = tot_commit = tot_cr = tot_hf = tot_land = tot_teach = n = 0.0
     for batch in loader:
         x = batch["x"].to(device)
         st = batch["static"].to(device)
         w = batch["lat_weight"].to(device)
+        teacher = batch["teacher"].to(device) if "teacher" in batch else None
         out = model(x, st)
-        loss, rec, rate_norm, hf = compute_losses(
-            out, x, st, w, channel_w, rate_w, commit_w, hf_w
+        loss, rec, rate_norm, hf, land, teach = compute_losses(
+            out,
+            x,
+            st,
+            w,
+            channel_w,
+            rate_w,
+            commit_w,
+            hf_w,
+            sst_land_w,
+            teacher=teacher,
+            teacher_w=teacher_w if teacher is not None else 0.0,
+            teacher_mask=teacher_mask,
         )
         tot_rec += float(rec) * x.shape[0]
         tot_rate += float(rate_norm) * x.shape[0]
         tot_commit += float(out["commit"]) * x.shape[0]
         tot_cr += float(out["cr_raw"]) * x.shape[0]
         tot_hf += float(hf) * x.shape[0]
+        tot_land += float(land) * x.shape[0]
+        tot_teach += float(teach) * x.shape[0]
         n += x.shape[0]
     model.train()
     n = max(n, 1.0)
@@ -162,8 +206,18 @@ def evaluate(
         "val_rate": tot_rate / n,
         "val_commit": tot_commit / n,
         "val_hf": tot_hf / n,
+        "val_sst_land": tot_land / n,
+        "val_teacher": tot_teach / n,
         "val_cr": tot_cr / n,
-        "val_loss": (tot_rec + rate_w * tot_rate + commit_w * tot_commit + hf_w * tot_hf) / n,
+        "val_loss": (
+            tot_rec
+            + rate_w * tot_rate
+            + commit_w * tot_commit
+            + hf_w * tot_hf
+            + sst_land_w * tot_land
+            + teacher_w * tot_teach
+        )
+        / n,
     }
 
 
@@ -216,10 +270,42 @@ def main() -> None:
         crop_size=cfg["data"]["crop_size"],
         static_path=static_path if static_path.exists() else None,
     )
+
+    # Optional CRA5 teacher cache
+    distill_cfg = cfg.get("distill") or {}
+    teacher_root = distill_cfg.get("teacher_cache")
+    teacher_mask_np = None
+    train_teacher = val_teacher = None
+    if teacher_root:
+        troot = Path(teacher_root)
+        mask_path = troot / "overlap_mask.npz"
+        if mask_path.exists():
+            mz = np.load(mask_path, allow_pickle=True)
+            teacher_mask_np = mz["mask"].astype(np.float32)
+            distill_cfg["teacher_mask"] = teacher_mask_np.tolist()
+            cfg["distill"] = distill_cfg
+        train_npy = troot / "train" / "recon_norm.npy"
+        val_npy = troot / "val" / "recon_norm.npy"
+        if train_npy.exists():
+            train_teacher = np.load(train_npy, mmap_mode="r")
+            print(f"Teacher train cache: {train_npy} shape={train_teacher.shape}")
+        if val_npy.exists():
+            val_teacher = np.load(val_npy, mmap_mode="r")
+            print(f"Teacher val cache: {val_npy} shape={val_teacher.shape}")
+        cfg["train"]["lambda_teacher"] = float(
+            cfg["train"].get("lambda_teacher", distill_cfg.get("lambda_teacher", 0.5))
+        )
+
     if mean is None or std is None:
         print("Estimating train mean/std…")
         train_ds = Era5ZarrDataset(
-            train_path, augment=True, seed=cfg["train"]["seed"], **ds_kwargs
+            train_path,
+            augment=True,
+            seed=cfg["train"]["seed"],
+            teacher_recon=train_teacher,
+            teacher_mask=teacher_mask_np,
+            teacher_index_offset=int(distill_cfg.get("train_offset", 0)),
+            **ds_kwargs,
         )
         save_stats(train_ds.mean.numpy().reshape(28), train_ds.std.numpy().reshape(28), stats_path)
     else:
@@ -229,6 +315,9 @@ def main() -> None:
             std=std,
             augment=True,
             seed=cfg["train"]["seed"],
+            teacher_recon=train_teacher,
+            teacher_mask=teacher_mask_np,
+            teacher_index_offset=int(distill_cfg.get("train_offset", 0)),
             **ds_kwargs,
         )
 
@@ -242,6 +331,9 @@ def main() -> None:
             augment=False,
             seed=cfg["train"]["seed"] + 1,
             static_path=static_path if static_path.exists() else None,
+            teacher_recon=val_teacher,
+            teacher_mask=teacher_mask_np,
+            teacher_index_offset=int(distill_cfg.get("val_offset", 0)),
         )
     val_full_ds = None
     if val_path.exists() and cfg["train"].get("full_frame_val_every"):
@@ -253,6 +345,9 @@ def main() -> None:
             augment=False,
             seed=cfg["train"]["seed"] + 2,
             static_path=static_path if static_path.exists() else None,
+            teacher_recon=val_teacher,
+            teacher_mask=teacher_mask_np,
+            teacher_index_offset=int(distill_cfg.get("val_offset", 0)),
         )
 
     train_loader = DataLoader(
@@ -283,6 +378,11 @@ def main() -> None:
     if nparams > 20_000_000:
         raise SystemExit(f"Model has {nparams} params > 20M hackathon limit")
 
+    if args.init_ckpt is not None:
+        init = torch.load(args.init_ckpt, map_location="cpu", weights_only=False)
+        missing, unexpected = model.load_state_dict(init["model"], strict=False)
+        print(f"Warm-start from {args.init_ckpt} missing={len(missing)} unexpected={len(unexpected)}")
+
     opt = torch.optim.AdamW(
         model.parameters(),
         lr=cfg["train"]["lr"],
@@ -293,6 +393,8 @@ def main() -> None:
     accum = int(cfg["train"].get("grad_accum", 1))
     commit_w = float(cfg["train"].get("commit_weight", 0.05))
     hf_w = float(cfg["train"].get("hf_weight", 0.05))
+    sst_land_w = float(cfg["train"].get("sst_land_weight", 1.0))
+    teacher_w = float(cfg["train"].get("lambda_teacher", 0.0))
     select_full = bool(cfg["train"].get("select_full_frame", True))
 
     log_every = int(cfg["train"].get("log_every", 20))
@@ -302,6 +404,16 @@ def main() -> None:
 
     ch_w_cfg = cfg["train"].get("channel_weights") or DEFAULT_CHANNEL_WEIGHTS
     channel_w = channel_weight_tensor(ch_w_cfg).to(device)
+
+    teacher_mask_t = None
+    if teacher_w > 0 and "teacher_mask" in cfg.get("distill", {}):
+        teacher_mask_t = torch.tensor(cfg["distill"]["teacher_mask"], dtype=torch.float32, device=device)
+    elif teacher_w > 0:
+        # default: all ones except sst/tcwv indices 5,6
+        m = torch.ones(28, dtype=torch.float32, device=device)
+        m[5] = 0.0
+        m[6] = 0.0
+        teacher_mask_t = m
 
     use_cuda = device.type == "cuda"
     scaler = torch.amp.GradScaler("cuda", enabled=use_cuda)
@@ -324,12 +436,30 @@ def main() -> None:
         x = batch["x"].to(device, non_blocking=True)
         st = batch["static"].to(device, non_blocking=True)
         w = batch["lat_weight"].to(device, non_blocking=True)
+        teacher = batch["teacher"].to(device, non_blocking=True) if "teacher" in batch else None
+        has_t = batch.get("has_teacher")
         rw = rate_weight_at(step + 1, cfg)
+        tw = teacher_w
+        if teacher is None or teacher_w <= 0:
+            tw = 0.0
+        elif has_t is not None and float(has_t.float().mean()) < 0.5:
+            tw = 0.0  # batch mostly without teacher cache
 
         with torch.amp.autocast("cuda", enabled=use_cuda):
             out = model(x, st)
-            loss_full, rec, rate_norm, hf = compute_losses(
-                out, x, st, w, channel_w, rw, commit_w, hf_w
+            loss_full, rec, rate_norm, hf, land, teach = compute_losses(
+                out,
+                x,
+                st,
+                w,
+                channel_w,
+                rw,
+                commit_w,
+                hf_w,
+                sst_land_w,
+                teacher=teacher,
+                teacher_w=tw,
+                teacher_mask=teacher_mask_t,
             )
             loss = loss_full / accum
 
@@ -355,9 +485,12 @@ def main() -> None:
                 "rate": float(rate_norm.detach()),
                 "commit": float(out["commit"].detach()),
                 "hf": float(hf.detach()),
+                "sst_land": float(land.detach()),
+                "teacher": float(teach.detach()),
                 "cr": float(out["cr_raw"].detach()),
                 "usage": float(out["usage"]),
                 "rate_w": rw,
+                "teacher_w": tw,
                 "lr": float(opt.param_groups[0]["lr"]),
                 "sec": time.time() - t0,
                 **{f"g_{k}": v for k, v in groups.items()},
@@ -366,12 +499,23 @@ def main() -> None:
                 loss=row["loss"],
                 rec=row["recon"],
                 cr=f"{row['cr']:.0f}",
-                rw=f"{rw:.3f}",
+                tw=f"{tw:.2f}",
             )
             history.append(row)
 
         if val_loader is not None and step % val_every == 0:
-            metrics = evaluate(model, val_loader, device, rw, commit_w, hf_w, channel_w)
+            metrics = evaluate(
+                model,
+                val_loader,
+                device,
+                rw,
+                commit_w,
+                hf_w,
+                channel_w,
+                sst_land_w,
+                teacher_w=teacher_w,
+                teacher_mask=teacher_mask_t,
+            )
             print(
                 f"\n[val] step={step} "
                 + " ".join(f"{k}={v:.4f}" for k, v in metrics.items())
@@ -394,7 +538,18 @@ def main() -> None:
         if full_every and val_full_loader is not None and step % full_every == 0:
             try:
                 torch.cuda.empty_cache()
-                mfull = evaluate(model, val_full_loader, device, rw, commit_w, hf_w, channel_w)
+                mfull = evaluate(
+                    model,
+                    val_full_loader,
+                    device,
+                    rw,
+                    commit_w,
+                    hf_w,
+                    channel_w,
+                    sst_land_w,
+                    teacher_w=teacher_w,
+                    teacher_mask=teacher_mask_t,
+                )
                 print(
                     f"[val-full] step={step} "
                     + " ".join(f"{k}={v:.4f}" for k, v in mfull.items())

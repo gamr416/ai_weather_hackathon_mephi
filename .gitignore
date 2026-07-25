@@ -35,7 +35,11 @@ logs/
 *.pt
 *.pth
 *.onnx
+!submission/artifacts/*.pt
 wandb/
 runs/
 outputs/
 checkpoints/
+third_party/checkpoints/
+third_party/CRA5/
+data/teacher_cra5*/

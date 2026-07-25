@@ -1,7 +1,7 @@
 # Residual Multi-Scale FSQ @ ERA5 0.5° — raw CR ≈ ×56
 
 data:
-  root: data/era5_28ch_0p5_6h_n128.zarr
+  root: data/era5_28ch_0p5_6h_n256.zarr
   crop_size: 192
 
 model:
@@ -33,20 +33,21 @@ train:
   lr: 1.5e-4
   weight_decay: 0.05
   warmup_steps: 500
-  max_steps: 9000
+  max_steps: 5000
   rate_weight: 0.02
   rate_warmup_steps: 1500
   commit_weight: 0.05
   hf_weight: 0.05
+  sst_land_weight: 1.0
   grad_clip: 1.0
   log_every: 20
   val_every: 200
   # full 360x720 + fine patch4 OOMs without SDPA; keep rare full-frame checks
-  full_frame_val_every: 3000
+  full_frame_val_every: 2500
   ckpt_every: 1000
   num_workers: 0
   runs_root: runs/residual_fsq_0p5
-  run_name: n128
+  run_name: n256
   select_full_frame: true
   channel_weights:
     t2m: 1.0
@@ -54,7 +55,7 @@ train:
     u10: 3.0
     v10: 3.0
     tp6h: 5.0
-    sst: 1.0
+    sst: 4.0
     tcwv: 1.5
     tcc: 3.0
     T1000: 1.0

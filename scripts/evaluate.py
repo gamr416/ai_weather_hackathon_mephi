@@ -17,6 +17,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.data.era5 import CHANNEL_ORDER, Era5ZarrDataset, load_stats
+from src.metrics.official_sigma import DEFAULT_SIGMA_PATH, load_official_sigma
+from src.metrics.scores import plot_nrmse_ylabel, scores_from_sse
 from src.models.perceiver_ae import PerceiverAE
 
 PLOT_CHANNELS = ["t2m", "mslp", "tp6h", "tcwv", "T850", "Z850", "U850", "Q850"]
@@ -28,6 +30,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--data", type=Path, required=True, help="…/era5_….zarr root with train/val/test")
     p.add_argument("--split", choices=["val", "test", "train"], default="val")
     p.add_argument("--stats", type=Path, default=None, help="norm_stats.npz (default: next to ckpt)")
+    p.add_argument(
+        "--sigma",
+        type=Path,
+        default=DEFAULT_SIGMA_PATH,
+        help="official σ npz (NRMSE = RMSE_phys / σ)",
+    )
     p.add_argument("--out", type=Path, default=None, help="output dir (default: <ckpt_dir>/eval_<split>)")
     p.add_argument("--max-frames", type=int, default=32, help="cap frames for metrics (RAM/time)")
     p.add_argument("--plot-frames", type=int, default=3, help="how many frames to visualize")
@@ -106,34 +114,6 @@ def collect_errors(
     return sse_norm, sse_phys, wsum, examples
 
 
-def scores_from_sse(sse_norm: np.ndarray, sse_phys: np.ndarray, wsum: float) -> dict:
-    # After train-normalization, lat-weighted RMSE in norm space == NRMSE vs train σ
-    rmse_norm = np.sqrt(sse_norm / max(wsum, 1e-12))
-    nrmse = rmse_norm.copy()
-    rmse_phys = np.sqrt(sse_phys / max(wsum, 1e-12))
-    surface = float(nrmse[:8].mean())
-    pressure = float(nrmse[8:].mean())
-    per = {
-        CHANNEL_ORDER[i]: {
-            "rmse_norm": float(rmse_norm[i]),
-            "nrmse": float(nrmse[i]),
-            "rmse_physical": float(rmse_phys[i]),
-        }
-        for i in range(28)
-    }
-    return {
-        "S_surface": surface,
-        "S_pressure": pressure,
-        "S_all": 0.5 * surface + 0.5 * pressure,
-        "per_channel": per,
-        "note": (
-            "nrmse == rmse_norm (inputs are train-normalized). "
-            "rmse_physical is latitude-weighted RMSE in original units. "
-            "VAEformer CI comparison needs official evaluator."
-        ),
-    }
-
-
 def plot_frame_comparison(
     target: np.ndarray,
     recon: np.ndarray,
@@ -183,7 +163,7 @@ def plot_nrmse_bars(metrics: dict, out_path: Path) -> None:
     ax.bar(range(28), vals, color=colors)
     ax.set_xticks(range(28))
     ax.set_xticklabels(names, rotation=90, fontsize=7)
-    ax.set_ylabel("NRMSE (norm space)")
+    ax.set_ylabel(plot_nrmse_ylabel())
     ax.set_title(
         f"Per-channel NRMSE  |  S_all={metrics['S_all']:.3f}  "
         f"S_surface={metrics['S_surface']:.3f}  S_pressure={metrics['S_pressure']:.3f}"
@@ -258,8 +238,16 @@ def main() -> None:
     out_dir = args.out or (args.ckpt.parent / f"eval_{args.split}")
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    _, sigma, sigma_source = load_official_sigma(args.sigma)
     sse_n, sse_p, wsum, examples = collect_errors(model, ds, device, args.max_frames)
-    metrics = scores_from_sse(sse_n, sse_p, wsum)
+    metrics = scores_from_sse(
+        sse_n,
+        sse_p,
+        wsum,
+        sigma=sigma,
+        sigma_source=sigma_source,
+        sigma_path=args.sigma,
+    )
     metrics["split"] = args.split
     metrics["n_frames"] = min(len(ds), args.max_frames)
     metrics["ckpt"] = str(args.ckpt)

@@ -14,6 +14,8 @@ from src.models.spatial_fsq import PatchEmbed, UniformQuantizer, raw_cr_from_bit
 __all__ = [
     "ResidualFSQAE",
     "latitude_weighted_mse_sst_ocean",
+    "sst_land_zero_loss",
+    "mask_sst_land",
     "high_freq_grad_penalty",
     "group_recon_stats",
     "raw_cr_from_bits",
@@ -121,6 +123,38 @@ class CNNRefine(nn.Module):
         return x + self.net(x)
 
 
+def ocean_mask_from_static(static: torch.Tensor) -> torch.Tensor:
+    """static: B,4,H,W or 4,H,W — ch0 = land_sea_mask (1=land). Returns ocean in [0,1]."""
+    if static.dim() == 3:
+        lsm = static[0:1]
+    else:
+        lsm = static[:, 0:1]
+    return (1.0 - lsm).clamp(0.0, 1.0)
+
+
+def mask_sst_land(recon: torch.Tensor, static: torch.Tensor, sst_idx: int = SST_IDX) -> torch.Tensor:
+    """Hard-zero SST over land (TZ)."""
+    ocean = ocean_mask_from_static(static)
+    out = recon.clone()
+    out[:, sst_idx : sst_idx + 1] = out[:, sst_idx : sst_idx + 1] * ocean
+    return out
+
+
+def sst_land_zero_loss(
+    pred: torch.Tensor,
+    static: torch.Tensor,
+    lat_weight: torch.Tensor,
+    sst_idx: int = SST_IDX,
+) -> torch.Tensor:
+    """Push pre-mask SST toward 0 over land so capacity is not wasted on land garbage."""
+    if lat_weight.dim() == 1:
+        w = lat_weight.view(1, 1, -1, 1)
+    else:
+        w = lat_weight.view(lat_weight.shape[0], 1, -1, 1)
+    land = 1.0 - ocean_mask_from_static(static)
+    return (pred[:, sst_idx : sst_idx + 1].pow(2) * land * w).mean()
+
+
 def latitude_weighted_mse_sst_ocean(
     pred: torch.Tensor,
     target: torch.Tensor,
@@ -139,8 +173,7 @@ def latitude_weighted_mse_sst_ocean(
         w = lat_weight.view(lat_weight.shape[0], 1, -1, 1)
     err = (pred - target).pow(2) * w
     if static is not None and static.shape[1] >= 1:
-        # ocean = 1 where land_sea_mask < 0.5
-        ocean = (1.0 - static[:, 0:1]).clamp(0.0, 1.0)
+        ocean = ocean_mask_from_static(static)
         err_sst = err[:, sst_idx : sst_idx + 1] * ocean
         err = torch.cat([err[:, :sst_idx], err_sst, err[:, sst_idx + 1 :]], dim=1)
     if channel_weight is not None:
@@ -402,7 +435,7 @@ class ResidualFSQAE(nn.Module):
             x_in, st_in = x, static
 
         enc = self.encode(x_in, st_in)
-        recon = self.decode(
+        recon_raw = self.decode(
             enc["z_c"],
             enc["z_f"],
             st_in,
@@ -411,7 +444,9 @@ class ResidualFSQAE(nn.Module):
             enc["gh_f"],
             enc["gw_f"],
         )
-        recon = recon[:, :, :h, :w]
+        recon_raw = recon_raw[:, :, :h, :w]
+        # Hard-zero SST on land (TZ); keep pre-mask for land→0 aux loss
+        recon = mask_sst_land(recon_raw, static)
 
         rate_bits = enc["rate_bits"]
         cr = raw_cr_from_bits(float(rate_bits.detach()) / max(b, 1), h, w, self.in_channels)
@@ -419,6 +454,7 @@ class ResidualFSQAE(nn.Module):
 
         return {
             "recon": recon,
+            "recon_raw": recon_raw,
             "z_c": enc["z_c"],
             "z_f": enc["z_f"],
             "indices_c": enc["indices_c"],
@@ -431,7 +467,57 @@ class ResidualFSQAE(nn.Module):
             "usage_c": enc["usage_c"],
             "usage_f": enc["usage_f"],
             "cr_raw": torch.tensor(cr, device=x.device, dtype=torch.float32),
+            "gh_c": enc["gh_c"],
+            "gw_c": enc["gw_c"],
+            "gh_f": enc["gh_f"],
+            "gw_f": enc["gw_f"],
+            "pad_h": pad_h,
+            "pad_w": pad_w,
         }
+
+    @torch.no_grad()
+    def compress(self, x: torch.Tensor, static: torch.Tensor | None = None) -> bytes:
+        """Encode one batch item (B=1) to zlib bitstream of FSQ indices."""
+        from src.codec.bitstream import encode_indices
+
+        assert x.shape[0] == 1, "compress expects batch size 1"
+        out = self.forward(x, static)
+        _, _, h, w = x.shape
+        return encode_indices(
+            out["indices_c"],
+            out["indices_f"],
+            h=h,
+            w=w,
+            gh_c=int(out["gh_c"]),
+            gw_c=int(out["gw_c"]),
+            gh_f=int(out["gh_f"]),
+            gw_f=int(out["gw_f"]),
+            levels_c=self.coarse_levels,
+            levels_f=self.fine_levels,
+        )
+
+    @torch.no_grad()
+    def decompress(self, blob: bytes, static: torch.Tensor) -> torch.Tensor:
+        """Decode bitstream → reconstruction (B=1). Exact index roundtrip."""
+        from src.codec.bitstream import decode_indices, indices_to_zq, official_cr
+
+        meta, idx_c, idx_f = decode_indices(blob)
+        idx_c = idx_c.to(static.device)
+        idx_f = idx_f.to(static.device)
+        z_c = indices_to_zq(idx_c, meta.levels_c)
+        z_f = indices_to_zq(idx_f, meta.levels_f)
+        # pad static to match encoder pad
+        h, w = meta.h, meta.w
+        ph = self.coarse_patch
+        pad_h = (ph - h % ph) % ph
+        pad_w = (ph - w % ph) % ph
+        if pad_h or pad_w:
+            st_in = F.pad(static, (0, pad_w, 0, pad_h))
+        else:
+            st_in = static
+        recon = self.decode(z_c, z_f, st_in, meta.gh_c, meta.gw_c, meta.gh_f, meta.gw_f)
+        recon = recon[:, :, :h, :w]
+        return mask_sst_land(recon, static)
 
     def num_parameters(self) -> int:
         return sum(p.numel() for p in self.parameters() if p.requires_grad)

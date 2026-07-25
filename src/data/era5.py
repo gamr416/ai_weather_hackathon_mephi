@@ -67,6 +67,9 @@ class Era5ZarrDataset(Dataset):
         augment: bool = False,
         seed: int = 0,
         static_path: str | Path | None = None,
+        teacher_recon: np.ndarray | None = None,
+        teacher_mask: np.ndarray | None = None,
+        teacher_index_offset: int = 0,
     ) -> None:
         self.path = Path(zarr_path)
         try:
@@ -80,6 +83,13 @@ class Era5ZarrDataset(Dataset):
         self.crop_size = crop_size
         self.augment = augment
         self.rng = np.random.default_rng(seed)
+        # Optional CRA5 teacher soft targets (N,28,H,W) in normalized space
+        self.teacher_recon = teacher_recon
+        self.teacher_mask = teacher_mask  # (28,) float 0/1
+        self.teacher_index_offset = int(teacher_index_offset)
+        if teacher_recon is not None and teacher_recon.shape[0] + self.teacher_index_offset < self.n:
+            # allow partial cache covering [offset, offset+len)
+            pass
 
         if mean is None or std is None:
             mean, std = self._estimate_stats(max_frames=min(64, self.n))
@@ -151,6 +161,13 @@ class Era5ZarrDataset(Dataset):
         assert static is not None
         _, h, w = x.shape
 
+        teacher = None
+        if self.teacher_recon is not None:
+            ti = i - self.teacher_index_offset
+            if 0 <= ti < len(self.teacher_recon):
+                teacher = torch.from_numpy(np.asarray(self.teacher_recon[ti], dtype=np.float32))
+
+        top = left = 0
         if self.crop_size is not None:
             cs = self.crop_size
             if h < cs or w < cs:
@@ -159,6 +176,8 @@ class Era5ZarrDataset(Dataset):
             left = int(self.rng.integers(0, w - cs + 1)) if self.augment else (w - cs) // 2
             x = x[:, top : top + cs, left : left + cs]
             static = static[:, top : top + cs, left : left + cs]
+            if teacher is not None:
+                teacher = teacher[:, top : top + cs, left : left + cs]
             w_lat = self.lat_weights[top : top + cs]
         else:
             w_lat = self.lat_weights
@@ -166,15 +185,33 @@ class Era5ZarrDataset(Dataset):
         if self.augment and self.rng.random() < 0.5:
             x = torch.flip(x, dims=[-1])
             static = torch.flip(static, dims=[-1])
+            if teacher is not None:
+                teacher = torch.flip(teacher, dims=[-1])
 
         x = torch.where(torch.isfinite(x), x, self.mean.expand_as(x))
         x_n = (x - self.mean) / self.std
-        return {
+        # TZ: SST over land is 0 after normalization (static ch0 = land_sea_mask)
+        ocean = (1.0 - static[0:1]).clamp(0.0, 1.0)
+        x_n = x_n.clone()
+        x_n[5:6] = x_n[5:6] * ocean
+        out = {
             "x": x_n,
             "static": static,
             "lat_weight": w_lat,
             "index": torch.tensor(i, dtype=torch.int64),
         }
+        if teacher is not None:
+            if self.teacher_mask is not None:
+                m = torch.as_tensor(self.teacher_mask, dtype=torch.float32).view(28, 1, 1)
+                teacher = teacher * m
+            out["teacher"] = teacher
+            out["has_teacher"] = torch.tensor(1, dtype=torch.int64)
+        elif self.teacher_recon is not None:
+            # partial cache miss — zero teacher, flag off
+            c, h2, w2 = x_n.shape
+            out["teacher"] = torch.zeros(c, h2, w2, dtype=torch.float32)
+            out["has_teacher"] = torch.tensor(0, dtype=torch.int64)
+        return out
 
 
 def save_stats(mean: np.ndarray, std: np.ndarray, path: Path) -> None:

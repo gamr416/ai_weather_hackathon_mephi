@@ -1,0 +1,85 @@
+# Residual-FSQ + CRA5 VAEformer teacher distillation @ 0.5°
+# Student ≤20M; teacher frozen & declared as external pretraining (not in N-efficiency).
+
+data:
+  root: data/era5_28ch_0p5_6h_n128.zarr
+  crop_size: 192
+
+distill:
+  teacher_cache: data/teacher_cra5_n128
+  lambda_teacher: 0.5
+  train_offset: 0
+  val_offset: 0
+
+model:
+  static_channels: 4
+  stem_dim: 64
+  stem_blocks: 2
+  coarse_patch: 8
+  coarse_dim: 256
+  coarse_depth: 4
+  coarse_dec_depth: 3
+  coarse_heads: 8
+  coarse_latent: 80
+  coarse_levels: 256
+  fine_patch: 4
+  fine_dim: 128
+  fine_depth: 2
+  fine_heads: 4
+  fine_latent: 16
+  fine_levels: 64
+  dropout: 0.1
+  drop_path: 0.1
+
+train:
+  seed: 0
+  batch_size: 2
+  grad_accum: 2
+  lr: 1.5e-4
+  weight_decay: 0.05
+  warmup_steps: 500
+  max_steps: 5000
+  rate_weight: 0.02
+  rate_warmup_steps: 1500
+  commit_weight: 0.05
+  hf_weight: 0.05
+  sst_land_weight: 1.0
+  lambda_teacher: 0.5
+  grad_clip: 1.0
+  log_every: 20
+  val_every: 200
+  full_frame_val_every: 2500
+  ckpt_every: 1000
+  num_workers: 0
+  runs_root: runs/residual_fsq_distill_0p5
+  run_name: distill_n128
+  select_full_frame: true
+  channel_weights:
+    t2m: 1.0
+    mslp: 0.5
+    u10: 3.0
+    v10: 3.0
+    tp6h: 5.0
+    sst: 4.0
+    tcwv: 1.5
+    tcc: 3.0
+    T1000: 1.0
+    T925: 1.0
+    T850: 1.0
+    T700: 1.0
+    U1000: 3.0
+    U925: 3.0
+    U850: 3.0
+    U700: 3.0
+    V1000: 3.0
+    V925: 3.0
+    V850: 3.0
+    V700: 3.0
+    Z1000: 0.5
+    Z925: 0.5
+    Z850: 0.5
+    Z700: 0.5
+    Q1000: 3.0
+    Q925: 3.0
+    Q850: 3.0
+    Q700: 3.0

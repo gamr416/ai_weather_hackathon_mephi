@@ -136,7 +136,9 @@ def stack_frame(ds: xr.Dataset, t) -> xr.DataArray:
             da = remap_0p5(pres[name].sel(level=lev)).astype(np.float32)
             slices.append(da.reset_coords(drop=True))
 
-    ch = xr.concat(slices, dim=pd.Index(CHANNEL_ORDER, name="channel"))
+    # Avoid pd.Index(...)/StringDtype — breaks on newer pandas+xarray.
+    ch = xr.concat(slices, dim="channel")
+    ch = ch.assign_coords(channel=("channel", np.array(CHANNEL_ORDER, dtype="U16")))
     return ch.expand_dims(time=[np.datetime64(t, "ns")]).rename("fields")
 
 

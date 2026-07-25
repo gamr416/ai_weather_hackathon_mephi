@@ -1,0 +1,78 @@
+# Residual-FSQ @ 0.5° — N=512 × 30k, warm-start from n256s50k_ft
+# Slightly higher rate_weight to keep official zlib CR ≤ ×64.
+
+data:
+  root: data/era5_28ch_0p5_6h_n512.zarr
+  crop_size: 160
+
+model:
+  static_channels: 4
+  stem_dim: 64
+  stem_blocks: 2
+  coarse_patch: 8
+  coarse_dim: 256
+  coarse_depth: 4
+  coarse_dec_depth: 3
+  coarse_heads: 8
+  coarse_latent: 80
+  coarse_levels: 256
+  fine_patch: 4
+  fine_dim: 128
+  fine_depth: 2
+  fine_heads: 4
+  fine_latent: 16
+  fine_levels: 64
+  dropout: 0.12
+  drop_path: 0.12
+
+train:
+  seed: 2
+  batch_size: 2
+  grad_accum: 2
+  lr: 8.0e-5
+  weight_decay: 0.06
+  warmup_steps: 1000
+  max_steps: 30000
+  rate_weight: 0.018
+  rate_warmup_steps: 2500
+  commit_weight: 0.05
+  hf_weight: 0.12
+  sst_land_weight: 1.5
+  grad_clip: 0.8
+  log_every: 20
+  val_every: 500
+  full_frame_val_every: 5000
+  ckpt_every: 2500
+  num_workers: 0
+  runs_root: runs/residual_fsq_0p5
+  run_name: n512s30k
+  select_full_frame: true
+  channel_weights:
+    t2m: 1.2
+    mslp: 0.5
+    u10: 3.5
+    v10: 3.5
+    tp6h: 8.0
+    sst: 7.0
+    tcwv: 2.0
+    tcc: 5.0
+    T1000: 1.0
+    T925: 1.0
+    T850: 1.2
+    T700: 1.0
+    U1000: 3.5
+    U925: 3.5
+    U850: 3.5
+    U700: 3.5
+    V1000: 3.5
+    V925: 3.5
+    V850: 3.5
+    V700: 3.5
+    Z1000: 0.5
+    Z925: 0.5
+    Z850: 0.5
+    Z700: 0.5
+    Q1000: 3.5
+    Q925: 3.5
+    Q850: 3.5
+    Q700: 4.0

@@ -32,6 +32,8 @@
 
 Сравнение: vs persistence; vs тот же probe на признаках VAEformer-референса.
 
+**Наша реализация** (`scripts/probe/latent_probe.py`): MSE в **pooled latent** space vs persistence — не physical-field NRMSE / \(\sigma_\mathrm{official}\). Реконструкция кодека оценивается отдельно через `evaluate.py`.
+
 ---
 
 ## Scores
@@ -42,7 +44,17 @@
 | \(S_\mathrm{pressure}\) | NRMSE по 20 (var×level) |
 | \(S_\mathrm{all}\) | \(0.5\,S_\mathrm{surface}+0.5\,S_\mathrm{pressure}\) |
 
-База: **latitude-weighted RMSE**, затем NRMSE = RMSE / \(\sigma_{f,\mathrm{train}}\).
+База: **latitude-weighted RMSE в физических единицах** по каждому полю, затем
+\(\mathrm{NRMSE}_f = \mathrm{RMSE}_f / \sigma_f\).
+
+Знаменатель \(\sigma_f\): официальный вектор в [`data/ref_stats/`](../data/ref_stats/SOURCE.md)
+(LadCast `ERA5_normal_1979_2017.json` + train-pool для `tcc`/`tcwv`). Сборка:
+
+```bash
+python scripts/metrics/build_official_sigma.py
+```
+
+Eval пишет `nrmse = rmse_physical / sigma_official`; `rmse_norm` — только диагностика train-нормализации.
 
 Ещё: физический RMSE, PSNR (0.5–99.5 pct), спектры, экстремумы осадков.
 

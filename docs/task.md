@@ -168,13 +168,24 @@ N \in \{128, 256, 512, 1024, 2048, 4096, 8192\}
 
 ### Latitude-weighted RMSE / NRMSE
 
+RMSE считается **в физических единицах** отдельно по каждому погодному полю \(f\):
+
 \[
 \mathrm{RMSE}_f = \sqrt{
   \frac{\sum_{t,i,j} \cos\varphi_i\,(\hat x - x)^2}
        {\sum_{t,i,j} \cos\varphi_i}
 },\qquad
-\mathrm{NRMSE}_f = \frac{\mathrm{RMSE}_f}{\sigma_{f,\mathrm{train}}}
+\mathrm{NRMSE}_f = \frac{\mathrm{RMSE}_f}{\sigma_{f}}
 \]
+
+**Знаменатель \(\sigma_f\)** (уточнение организаторов): из репозитория
+[LadCast](https://github.com/tonyzyl/ladcast) (`static/ERA5_normal_1979_2017.json`)
+или климатологии CDS. В проекте: `data/ref_stats/sigma_official_28ch.npz`
+(LadCast для пересекающихся каналов; `tcc`/`tcwv` — lat-weighted std по локальному train-пулу).
+Сборка: `python scripts/metrics/build_official_sigma.py`.
+
+Train-нормализация (`norm_stats.npz`) используется только для обучения; **скоры** \(S_\ast\) —
+только по official NRMSE.
 
 | Score | Определение |
 |-------|-------------|
@@ -223,9 +234,13 @@ N \in \{128, 256, 512, 1024, 2048, 4096, 8192\}
 
 Организаторы: единый evaluator + baseline outputs на общих полях.
 
+**Уточнение по процедуре:** устной защиты нет; эксперт проверяет решения и пишет обратную связь в чате; итоги — на награждении. Практический чеклист команды: [submission_notes.md](submission_notes.md).
+
 ### Итог хакатона (ожидаемый научный результат)
 
 Открытая эмпирическая карта: **сколько уникальных 6h кадров** нужно, чтобы выучить 28-канальное компактное представление нижней атмосферы на одной GPU; сравнение **0.5° vs 0.25°**. Surface и pressure **всегда** обучаются совместно.
+
+> **Наш delivery:** основной результат на **0.5°**; 0.25° не обещаем в сдаче (compute). См. [00_overview.md](00_overview.md).
 
 ---
 
