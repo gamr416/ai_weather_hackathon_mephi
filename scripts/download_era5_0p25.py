@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import time as time_mod
 import warnings
@@ -20,6 +21,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+
+# GCS from RU typically needs local proxy (same as 0.5° script).
+for k in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "all_proxy"):
+    os.environ.setdefault(k, "http://127.0.0.1:12334")
 
 import gcsfs
 
@@ -101,7 +106,7 @@ def setup_logging(log_path: Path | None) -> Path:
 
 def open_wb2() -> xr.Dataset:
     LOG.info("Opening WeatherBench2 Zarr (anon GCS): %s", WB2_URL)
-    fs = gcsfs.GCSFileSystem(token="anon")
+    fs = gcsfs.GCSFileSystem(token="anon", session_kwargs={"trust_env": True})
     ds = xr.open_zarr(fs.get_mapper(WB2_URL), consolidated=True)
     LOG.info(
         "Opened WB2: time=%s lat=%s lon=%s n_vars=%d",

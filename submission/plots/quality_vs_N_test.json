@@ -2,31 +2,33 @@
   {
     "N": 128,
     "run": "20260725_010045_n128s9k",
-    "S_all": 0.13122726844001853,
-    "S_surface": 0.1402259186924164,
-    "S_pressure": 0.12222861818762062,
-    "n_frames": 32,
-    "sigma_path": "/home/user/ai_weather_hackathon_mephi/data/ref_stats/sigma_official_28ch.npz",
-    "metrics_path": "/home/user/ai_weather_hackathon_mephi/runs/residual_fsq_0p5/20260725_010045_n128s9k/eval_test/metrics.json"
+    "S_all": 0.1312,
+    "S_surface": 0.1402,
+    "S_pressure": 0.1222,
+    "note": "full-frame"
   },
   {
     "N": 256,
     "run": "20260725_160856_n256s50k_ft",
-    "S_all": 0.08302819069600126,
-    "S_surface": 0.08463233380907564,
-    "S_pressure": 0.08142404758292687,
-    "n_frames": 128,
-    "sigma_path": "/home/user/ai_weather_hackathon_mephi/data/ref_stats/sigma_official_28ch.npz",
-    "metrics_path": "/home/user/ai_weather_hackathon_mephi/runs/residual_fsq_0p5/20260725_160856_n256s50k_ft/eval_test/metrics.json"
+    "S_all": 0.0830,
+    "S_surface": 0.0846,
+    "S_pressure": 0.0814,
+    "note": "full-frame"
   },
   {
     "N": 512,
     "run": "20260725_192609_n512s35k_ft",
-    "S_all": 0.07875517865629916,
-    "S_surface": 0.07908058338493876,
-    "S_pressure": 0.07842977392765957,
-    "n_frames": 128,
-    "sigma_path": "/home/user/ai_weather_hackathon_mephi/data/ref_stats/sigma_official_28ch.npz",
-    "metrics_path": "/home/user/ai_weather_hackathon_mephi/runs/residual_fsq_0p5/20260725_192609_n512s35k_ft/eval_test/metrics.json"
+    "S_all": 0.0788,
+    "S_surface": 0.0791,
+    "S_pressure": 0.0784,
+    "note": "full-frame 8.46M"
+  },
+  {
+    "N": 512,
+    "run": "20260725_212101_n512s40k_A18",
+    "S_all": 0.0724,
+    "S_surface": 0.0728,
+    "S_pressure": 0.0720,
+    "note": "full-frame A18+ 19.11M (CPU 32 frames)"
   }
 ]

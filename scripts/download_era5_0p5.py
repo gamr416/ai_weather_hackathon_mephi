@@ -142,40 +142,76 @@ def stack_frame(ds: xr.Dataset, t) -> xr.DataArray:
     return ch.expand_dims(time=[np.datetime64(t, "ns")]).rename("fields")
 
 
-def download_split(ds: xr.Dataset, times: np.ndarray, out_path: Path, split: str, batch: int) -> None:
+def written_time_chunks(out_path: Path) -> set[int]:
+    """Indices of time chunks already present on disk (zarr v3 layout fields/c/<i>/…)."""
+    root = out_path / "fields" / "c"
+    if not root.is_dir():
+        return set()
+    out: set[int] = set()
+    for p in root.iterdir():
+        if p.is_dir() and p.name.isdigit():
+            out.add(int(p.name))
+    return out
+
+
+def download_split(
+    ds: xr.Dataset,
+    times: np.ndarray,
+    out_path: Path,
+    split: str,
+    batch: int,
+    *,
+    resume: bool = False,
+) -> None:
     del batch
-    if out_path.exists():
-        raise SystemExit(f"Exists: {out_path}")
-
-    import dask.array as da
-
     n = len(times)
-    template = xr.Dataset(
-        {
-            "fields": (
-                ("time", "channel", "lat", "lon"),
-                da.zeros((n, 28, len(TARGET_LAT), len(TARGET_LON)), chunks=(1, 28, 360, 720), dtype=np.float32),
-            )
-        },
-        coords={
-            "time": ("time", times.astype("datetime64[ns]")),
-            "channel": ("channel", np.array(CHANNEL_ORDER, dtype="U8")),
-            "lat": ("lat", TARGET_LAT),
-            "lon": ("lon", TARGET_LON),
-        },
-    )
-    template.to_zarr(
-        out_path,
-        mode="w",
-        compute=False,
-        encoding={
-            **TIME_ENCODING,
-            "fields": {"chunks": (1, 28, 360, 720), "dtype": "float32"},
-        },
-        consolidated=True,
-    )
+    start = 0
+    if out_path.exists():
+        if not resume:
+            raise SystemExit(f"Exists: {out_path}")
+        done = written_time_chunks(out_path)
+        # resume at first missing contiguous from 0, else max(done)+1
+        start = 0
+        while start < n and start in done:
+            start += 1
+        print(f"[{split}] resume from {start+1}/{n} (have {len(done)} chunks)", flush=True)
+        if start >= n:
+            print(f"[{split}] already complete → {out_path}", flush=True)
+            return
+    else:
+        import dask.array as da
 
-    for i, t in enumerate(times):
+        template = xr.Dataset(
+            {
+                "fields": (
+                    ("time", "channel", "lat", "lon"),
+                    da.zeros(
+                        (n, 28, len(TARGET_LAT), len(TARGET_LON)),
+                        chunks=(1, 28, 360, 720),
+                        dtype=np.float32,
+                    ),
+                )
+            },
+            coords={
+                "time": ("time", times.astype("datetime64[ns]")),
+                "channel": ("channel", np.array(CHANNEL_ORDER, dtype="U8")),
+                "lat": ("lat", TARGET_LAT),
+                "lon": ("lon", TARGET_LON),
+            },
+        )
+        template.to_zarr(
+            out_path,
+            mode="w",
+            compute=False,
+            encoding={
+                **TIME_ENCODING,
+                "fields": {"chunks": (1, 28, 360, 720), "dtype": "float32"},
+            },
+            consolidated=True,
+        )
+
+    for i in range(start, n):
+        t = times[i]
         print(f"[{split}] {i+1}/{n} {np.datetime_as_string(t, unit='h')}", flush=True)
         frame = stack_frame(ds, t).to_dataset()
         # region write: only time-aligned data vars; drop non-region coords
@@ -197,6 +233,11 @@ def main() -> None:
     p.add_argument("--batch", type=int, default=8)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out", type=Path, default=Path("data/era5_28ch_0p5_6h.zarr"))
+    p.add_argument(
+        "--resume",
+        action="store_true",
+        help="Continue into existing out/ (skip written time chunks).",
+    )
     args = p.parse_args()
 
     print("Opening WB2…", flush=True)
@@ -220,9 +261,9 @@ def main() -> None:
     )
 
     root = args.out
-    if root.exists():
-        raise SystemExit(f"Refusing to overwrite existing {root}")
-    root.mkdir(parents=True)
+    if root.exists() and not args.resume:
+        raise SystemExit(f"Refusing to overwrite existing {root} (pass --resume)")
+    root.mkdir(parents=True, exist_ok=True)
 
     meta = {
         "grid": "0.5deg",
@@ -239,19 +280,25 @@ def main() -> None:
             "test": [np.datetime_as_string(t) for t in test_t],
         },
     }
-    (root / "manifest.json").write_text(json.dumps(meta, indent=2))
+    # keep existing manifest on resume (same seed → same times)
+    if not (root / "manifest.json").exists() or not args.resume:
+        (root / "manifest.json").write_text(json.dumps(meta, indent=2))
 
-    download_split(ds, train_t, root / "train.zarr", "train", args.batch)
-    download_split(ds, val_t, root / "val.zarr", "val", args.batch)
-    download_split(ds, test_t, root / "test.zarr", "test", args.batch)
+    download_split(ds, train_t, root / "train.zarr", "train", args.batch, resume=args.resume)
+    download_split(ds, val_t, root / "val.zarr", "val", args.batch, resume=args.resume)
+    download_split(ds, test_t, root / "test.zarr", "test", args.batch, resume=args.resume)
 
     print("static…", flush=True)
-    static_vars = {}
-    for key in ("land_sea_mask", "geopotential_at_surface"):
-        if key in ds:
-            static_vars[key] = remap_0p5(ds[key].load()).astype(np.float32)
-    if static_vars:
-        xr.Dataset(static_vars).to_zarr(root / "static.zarr", mode="w", consolidated=True)
+    static_path = root / "static.zarr"
+    if static_path.exists() and args.resume:
+        print("static already present, skip", flush=True)
+    else:
+        static_vars = {}
+        for key in ("land_sea_mask", "geopotential_at_surface"):
+            if key in ds:
+                static_vars[key] = remap_0p5(ds[key].load()).astype(np.float32)
+        if static_vars:
+            xr.Dataset(static_vars).to_zarr(static_path, mode="w", consolidated=True)
 
     # verify times
     tr = xr.open_zarr(root / "train.zarr")

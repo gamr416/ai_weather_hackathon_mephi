@@ -1,263 +1,71 @@
 {
-  "ckpt": "runs/residual_fsq_0p5/20260725_192609_n512s35k_ft/best.pt",
+  "ckpt": "runs/residual_fsq_0p5/20260725_212101_n512s40k_A18/best.pt",
   "split": "val",
-  "n_frames": 32,
-  "mean_cr_official": 63.0,
+  "n_frames": 8,
+  "mean_cr_official": 38.72509693502013,
   "all_exact": true,
   "frames": [
     {
       "frame": 0,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
+      "bytes": 753359,
+      "cr_official": 38.53461629847125,
+      "cr_raw": 34.46154022216797,
       "exact_indices": true,
       "recon_mse_vs_forward": 0.0
     },
     {
       "frame": 1,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
+      "bytes": 749420,
+      "cr_official": 38.73715673454138,
+      "cr_raw": 34.46154022216797,
       "exact_indices": true,
       "recon_mse_vs_forward": 0.0
     },
     {
       "frame": 2,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
+      "bytes": 749692,
+      "cr_official": 38.72310228733934,
+      "cr_raw": 34.46154022216797,
       "exact_indices": true,
       "recon_mse_vs_forward": 0.0
     },
     {
       "frame": 3,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
+      "bytes": 749430,
+      "cr_official": 38.736639846283175,
+      "cr_raw": 34.46154022216797,
       "exact_indices": true,
       "recon_mse_vs_forward": 0.0
     },
     {
       "frame": 4,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
+      "bytes": 749517,
+      "cr_official": 38.73214350041427,
+      "cr_raw": 34.46154022216797,
       "exact_indices": true,
       "recon_mse_vs_forward": 0.0
     },
     {
       "frame": 5,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
+      "bytes": 748724,
+      "cr_official": 38.773166079890586,
+      "cr_raw": 34.46154022216797,
       "exact_indices": true,
       "recon_mse_vs_forward": 0.0
     },
     {
       "frame": 6,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
+      "bytes": 748786,
+      "cr_official": 38.769955634854284,
+      "cr_raw": 34.46154022216797,
       "exact_indices": true,
       "recon_mse_vs_forward": 0.0
     },
     {
       "frame": 7,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 8,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 9,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 10,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 11,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 12,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 13,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 14,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 15,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 16,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 17,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 18,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 19,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 20,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 21,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 22,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 23,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 24,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 25,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 26,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 27,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 28,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 29,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 30,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
-      "exact_indices": true,
-      "recon_mse_vs_forward": 0.0
-    },
-    {
-      "frame": 31,
-      "bytes": 460800,
-      "cr_official": 63.0,
-      "cr_raw": 56.0,
+      "bytes": 748322,
+      "cr_official": 38.79399509836674,
+      "cr_raw": 34.46154022216797,
       "exact_indices": true,
       "recon_mse_vs_forward": 0.0
     }

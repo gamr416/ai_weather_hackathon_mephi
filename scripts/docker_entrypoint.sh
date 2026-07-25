@@ -4,32 +4,23 @@ cd /workspace
 
 cat <<'EOF'
 ╔══════════════════════════════════════════════════════════╗
-║  MEPhI hackathon — Residual-FSQ ERA5 codec (expert)     ║
+║  MEPhI — Residual-FSQ A18+ ERA5 codec (expert)           ║
 ╚══════════════════════════════════════════════════════════╝
 
-Bundled checkpoint: submission/artifacts/best.pt
-Metrics / plots / σ / time manifests: submission/
+Checkpoint: submission/artifacts/best.pt  (19.11M, N=512)
+Full-frame test S_all ≈ 0.0724 (CPU); crop160 ≈ 0.0605 (GPU)
+Official CR ≈ ×38.7, exact roundtrip
 
-Quick checks (no data mount needed):
-  python -c "import torch; from pathlib import Path; import yaml; \
-ckpt=torch.load('submission/artifacts/best.pt',map_location='cpu',weights_only=False); \
-print('params', ckpt.get('nparams')); print('keys', list(ckpt.keys()))"
-
-With data mounted at /workspace/data/..._n512.zarr:
+Note: full-frame GPU may OOM on 12GB — use --device cpu for full grid.
 
   python scripts/residual_fsq/evaluate.py \
     --ckpt submission/artifacts/best.pt \
     --data data/era5_28ch_0p5_6h_n512.zarr \
     --stats submission/artifacts/norm_stats.npz \
     --sigma submission/ref_stats/sigma_official_28ch.npz \
-    --split test --max-frames 32
+    --split test --max-frames 8 --device cpu
 
-  python scripts/residual_fsq/eval_bitstream.py \
-    --ckpt submission/artifacts/best.pt \
-    --data data/era5_28ch_0p5_6h_n512.zarr \
-    --split val --max-frames 8
-
-Docs: README.md  |  docs/submission_notes.md  |  submission/MANIFEST.json
+Docs: README.md | submission/MANIFEST.json
 EOF
 
 exec bash

@@ -1,0 +1,247 @@
+{
+  "S_surface": 0.06042698919716967,
+  "S_pressure": 0.06121431259807621,
+  "S_all": 0.06082065089762294,
+  "per_channel": {
+    "t2m": {
+      "rmse_norm": 0.035306341605606424,
+      "rmse_physical": 0.74304472359393,
+      "nrmse": 0.034669794316485515,
+      "sigma_official": 21.432048797607422,
+      "sigma_source": "ladcast"
+    },
+    "mslp": {
+      "rmse_norm": 0.05624369621864618,
+      "rmse_physical": 75.63152110439769,
+      "nrmse": 0.05692260590367006,
+      "sigma_official": 1328.6728515625,
+      "sigma_source": "ladcast"
+    },
+    "u10": {
+      "rmse_norm": 0.05917798535364586,
+      "rmse_physical": 0.3303380506704,
+      "nrmse": 0.06067229828206281,
+      "sigma_official": 5.444627285003662,
+      "sigma_source": "ladcast"
+    },
+    "v10": {
+      "rmse_norm": 0.06294753533324264,
+      "rmse_physical": 0.29850592333804044,
+      "nrmse": 0.06388268411604768,
+      "sigma_official": 4.672720432281494,
+      "sigma_source": "ladcast"
+    },
+    "tp6h": {
+      "rmse_norm": 0.06611804635106125,
+      "rmse_physical": 0.00013713365831166723,
+      "nrmse": 0.08250496357807052,
+      "sigma_official": 0.0016621261602267623,
+      "sigma_source": "ladcast"
+    },
+    "sst": {
+      "rmse_norm": 0.0633027809681281,
+      "rmse_physical": 0.739995780543592,
+      "nrmse": 0.06314331079338258,
+      "sigma_official": 11.719305992126465,
+      "sigma_source": "ladcast"
+    },
+    "tcwv": {
+      "rmse_norm": 0.06842658190369352,
+      "rmse_physical": 1.1473671958341245,
+      "nrmse": 0.06804158073522598,
+      "sigma_official": 16.862735748291016,
+      "sigma_source": "train_pool"
+    },
+    "tcc": {
+      "rmse_norm": 0.05377037996283643,
+      "rmse_physical": 0.019345786998271823,
+      "nrmse": 0.05357867585241222,
+      "sigma_official": 0.36107251048088074,
+      "sigma_source": "train_pool"
+    },
+    "T1000": {
+      "rmse_norm": 0.037684348405814416,
+      "rmse_physical": 0.6357429607243211,
+      "nrmse": 0.036862832609401326,
+      "sigma_official": 17.246177673339844,
+      "sigma_source": "ladcast"
+    },
+    "T925": {
+      "rmse_norm": 0.0429956025296048,
+      "rmse_physical": 0.6819889650036084,
+      "nrmse": 0.0421080968404924,
+      "sigma_official": 16.196147918701172,
+      "sigma_source": "ladcast"
+    },
+    "T850": {
+      "rmse_norm": 0.04381300380036277,
+      "rmse_physical": 0.6771703347999117,
+      "nrmse": 0.04310638374106761,
+      "sigma_official": 15.709281921386719,
+      "sigma_source": "ladcast"
+    },
+    "T700": {
+      "rmse_norm": 0.04353474535356167,
+      "rmse_physical": 0.6430016876309651,
+      "nrmse": 0.043115640707074396,
+      "sigma_official": 14.913420677185059,
+      "sigma_source": "ladcast"
+    },
+    "U1000": {
+      "rmse_norm": 0.06148325984661472,
+      "rmse_physical": 0.37935913514799896,
+      "nrmse": 0.0629029074731368,
+      "sigma_official": 6.030868053436279,
+      "sigma_source": "ladcast"
+    },
+    "U925": {
+      "rmse_norm": 0.06696249829565776,
+      "rmse_physical": 0.5356847318965456,
+      "nrmse": 0.0686498797244737,
+      "sigma_official": 7.8031415939331055,
+      "sigma_source": "ladcast"
+    },
+    "U850": {
+      "rmse_norm": 0.06989704626479826,
+      "rmse_physical": 0.5776150651332514,
+      "nrmse": 0.07168143570590738,
+      "sigma_official": 8.058084487915039,
+      "sigma_source": "ladcast"
+    },
+    "U700": {
+      "rmse_norm": 0.06875829654470553,
+      "rmse_physical": 0.6370314913110187,
+      "nrmse": 0.07026442603076712,
+      "sigma_official": 9.066202163696289,
+      "sigma_source": "ladcast"
+    },
+    "V1000": {
+      "rmse_norm": 0.06365499130779226,
+      "rmse_physical": 0.3357731056404366,
+      "nrmse": 0.06447664540664048,
+      "sigma_official": 5.207670211791992,
+      "sigma_source": "ladcast"
+    },
+    "V925": {
+      "rmse_norm": 0.07269671840225855,
+      "rmse_physical": 0.46799385789075865,
+      "nrmse": 0.07362060547862752,
+      "sigma_official": 6.356832504272461,
+      "sigma_source": "ladcast"
+    },
+    "V850": {
+      "rmse_norm": 0.07387088566065028,
+      "rmse_physical": 0.4596898595386828,
+      "nrmse": 0.07464317982951915,
+      "sigma_official": 6.1584978103637695,
+      "sigma_source": "ladcast"
+    },
+    "V700": {
+      "rmse_norm": 0.07102725107722077,
+      "rmse_physical": 0.4839366845310544,
+      "nrmse": 0.0712881520042363,
+      "sigma_official": 6.788458824157715,
+      "sigma_source": "ladcast"
+    },
+    "Z1000": {
+      "rmse_norm": 0.05443798246705722,
+      "rmse_physical": 59.18312784249467,
+      "nrmse": 0.05529899451167899,
+      "sigma_official": 1070.23876953125,
+      "sigma_source": "ladcast"
+    },
+    "Z925": {
+      "rmse_norm": 0.05078498814982795,
+      "rmse_physical": 63.55531728994848,
+      "nrmse": 0.051757156052706796,
+      "sigma_official": 1227.9522705078125,
+      "sigma_source": "ladcast"
+    },
+    "Z850": {
+      "rmse_norm": 0.04613290384962796,
+      "rmse_physical": 69.00654018778495,
+      "nrmse": 0.046918663136254,
+      "sigma_official": 1470.76953125,
+      "sigma_source": "ladcast"
+    },
+    "Z700": {
+      "rmse_norm": 0.043638882094923455,
+      "rmse_physical": 94.49909341514734,
+      "nrmse": 0.04414222403443301,
+      "sigma_official": 2140.786865234375,
+      "sigma_source": "ladcast"
+    },
+    "Q1000": {
+      "rmse_norm": 0.052541871871669324,
+      "rmse_physical": 0.00031240169361309683,
+      "nrmse": 0.05295578218851907,
+      "sigma_official": 0.005899293348193169,
+      "sigma_source": "ladcast"
+    },
+    "Q925": {
+      "rmse_norm": 0.0772964860506042,
+      "rmse_physical": 0.0003960351519081289,
+      "nrmse": 0.07846085368769141,
+      "sigma_official": 0.005047550890594721,
+      "sigma_source": "ladcast"
+    },
+    "Q850": {
+      "rmse_norm": 0.08292714492422913,
+      "rmse_physical": 0.0003458235401547684,
+      "nrmse": 0.08500971519509487,
+      "sigma_official": 0.004068047273904085,
+      "sigma_source": "ladcast"
+    },
+    "Q700": {
+      "rmse_norm": 0.08286963661598153,
+      "rmse_physical": 0.00021838151642443416,
+      "nrmse": 0.0870226776038018,
+      "sigma_official": 0.002509478246793151,
+      "sigma_source": "ladcast"
+    }
+  },
+  "sigma_path": "/home/user/ai_weather_hackathon_mephi/data/ref_stats/sigma_official_28ch.npz",
+  "sigma_source_map": {
+    "t2m": "ladcast",
+    "mslp": "ladcast",
+    "u10": "ladcast",
+    "v10": "ladcast",
+    "tp6h": "ladcast",
+    "sst": "ladcast",
+    "tcwv": "train_pool",
+    "tcc": "train_pool",
+    "T1000": "ladcast",
+    "T925": "ladcast",
+    "T850": "ladcast",
+    "T700": "ladcast",
+    "U1000": "ladcast",
+    "U925": "ladcast",
+    "U850": "ladcast",
+    "U700": "ladcast",
+    "V1000": "ladcast",
+    "V925": "ladcast",
+    "V850": "ladcast",
+    "V700": "ladcast",
+    "Z1000": "ladcast",
+    "Z925": "ladcast",
+    "Z850": "ladcast",
+    "Z700": "ladcast",
+    "Q1000": "ladcast",
+    "Q925": "ladcast",
+    "Q850": "ladcast",
+    "Q700": "ladcast"
+  },
+  "note": "nrmse = rmse_physical / sigma_official (LadCast 1979\u20132017 + train_pool gaps). rmse_norm is train-normalization diagnostic only; scores use official NRMSE.",
+  "split": "val",
+  "n_frames": 128,
+  "ckpt": "runs/residual_fsq_0p5/20260725_212101_n512s40k_A18/best.pt",
+  "crop_size": 160,
+  "codec": {
+    "mean_cr_raw": 34.46153846153846,
+    "mean_rate_bits": 665600.0,
+    "mean_rate_bits_coarse": 358400.0,
+    "mean_rate_bits_fine": 307200.0,
+    "expected_raw_cr": 34.46153846153846,
+    "note": "raw CR from coarse+fine uniform indices (no entropy coding yet)"
+  }
+}

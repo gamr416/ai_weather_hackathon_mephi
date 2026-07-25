@@ -3,75 +3,55 @@
   "task": "ERA5 28-channel AE codec (MEPhI hackathon)",
   "model": {
     "name": "ResidualFSQAE",
+    "variant": "A18+",
     "class": "src.models.residual_fsq.ResidualFSQAE",
-    "params_M": 8.46,
+    "params_M": 19.11,
     "param_limit_M": 20,
     "grid": "0.5deg",
     "shape": [28, 360, 720],
-    "channels": 28
+    "channels": 28,
+    "raw_cr": 34.5,
+    "note": "Larger capacity + more FSQ latents vs 8.46M baseline. Full-frame GPU OOM on 12GB (fine patch-4 attention); reported full-frame metrics via CPU."
   },
   "checkpoint": {
     "path": "submission/artifacts/best.pt",
-    "source_run": "runs/residual_fsq_0p5/20260725_192609_n512s35k_ft",
+    "source_run": "runs/residual_fsq_0p5/20260725_212101_n512s40k_A18",
     "train_N": 512,
-    "steps": 35000,
-    "warm_start_chain": [
-      "n128s9k",
-      "n256s25k",
-      "n256s50k_ft",
-      "n512s30k",
-      "n512s35k_ft"
-    ],
+    "steps": 40000,
     "norm_stats": "submission/artifacts/norm_stats.npz",
     "config": "submission/artifacts/config.yaml"
   },
   "metrics_reported": {
     "sigma": "submission/ref_stats/sigma_official_28ch.npz",
-    "sigma_note": "LadCast ERA5_normal_1979_2017.json std; tcc/tcwv from train-pool",
-    "val": {
-      "S_all": 0.0790,
-      "S_surface": 0.0793,
-      "S_pressure": 0.0787,
-      "file": "submission/metrics/val_metrics.json"
+    "full_frame": {
+      "protocol": "CPU encode/decode, 32 frames",
+      "val": {"S_all": 0.0725, "S_surface": 0.0729, "S_pressure": 0.0722, "file": "submission/metrics/val_metrics.json"},
+      "test": {"S_all": 0.0724, "S_surface": 0.0728, "S_pressure": 0.0720, "file": "submission/metrics/test_metrics.json"}
     },
-    "test": {
-      "S_all": 0.0788,
-      "S_surface": 0.0791,
-      "S_pressure": 0.0784,
-      "file": "submission/metrics/test_metrics.json"
+    "crop_160": {
+      "protocol": "GPU, crop 160, 128 frames",
+      "val": {"S_all": 0.0608, "file": "submission/metrics_crop/val_metrics.json"},
+      "test": {"S_all": 0.0605, "file": "submission/metrics_crop/test_metrics.json"}
     },
     "bitstream_val": {
-      "mean_cr_official": 63.0,
+      "mean_cr_official": 38.73,
       "all_exact": true,
-      "pad_max_cr": 63.0,
+      "n_frames": 8,
       "file": "submission/metrics/bitstream_val.json"
     },
-    "probe_6h": {
-      "file": "submission/probe_6h/metrics.json",
-      "pairs": 256,
-      "steps": 5000,
-      "latent_mse": 2.37e-05,
-      "persist_mse": 3.91e-05,
-      "note": "better than persistence in pooled latent space"
-    }
+    "previous_8p5M_full_test": {"S_all": 0.0788, "run": "n512s35k_ft"}
   },
   "delivery_checklist": {
     "code": true,
     "docker": true,
     "checkpoint": true,
-    "encoder_decoder": true,
     "bitstream": true,
-    "manifest_times": [
-      "submission/manifest_times_n128.json",
-      "submission/manifest_times_n256.json",
-      "submission/manifest_times_n512.json"
-    ],
+    "manifest_times": "submission/manifest_times_n512.json",
     "metrics_json": true,
-    "resources_documented": true,
     "quality_vs_N_plot": "submission/plots/quality_vs_N_test.png",
     "quality_vs_bitrate_plot": "submission/plots/quality_vs_bitrate_test.png",
-    "probe_6h": "submission/probe_6h/",
-    "scope_0p25": "submission/SCOPE_0p25.md (out of scope, declared)"
+    "probe_6h": "submission/probe_6h/ (from prior 8.5M final; re-run on A18 optional)",
+    "scope_0p25": "submission/SCOPE_0p25.md"
   },
   "container": {
     "dockerfile": "Dockerfile",
@@ -82,7 +62,7 @@
   },
   "resources": {
     "gpu": "RTX 3060 12GB",
-    "trainable_params": "8.46M",
+    "trainable_params": "19.11M",
     "resolution_delivered": "0.5deg only"
   }
 }

@@ -1,14 +1,12 @@
-# Пакет для эксперта
-
-См. корневой [`README.md`](../README.md) и [`MANIFEST.json`](MANIFEST.json).
+# Пакет A18+
 
 | Артефакт | Путь |
 |----------|------|
-| Checkpoint | `artifacts/best.pt` (N=512, 35k FT, test \(S_\mathrm{all}\)≈0.079) |
-| Метрики | `metrics/` |
-| σ LadCast | `ref_stats/` |
-| Манифесты времён | `manifest_times_n*.json` |
-| N-curve / bitrate | `plots/quality_vs_N_*.png`, `plots/quality_vs_bitrate_*.png` |
-| Probe +6h | `probe_6h/` |
-| 0.25° scope | `SCOPE_0p25.md` |
+| Checkpoint 19.11M | `artifacts/best.pt` |
+| Full-frame metrics | `metrics/` (CPU, 32 frames) |
+| Crop-160 metrics | `metrics_crop/` |
+| Bitstream | `metrics/bitstream_val.json` (CR×38.7) |
+| σ / manifests / plots | `ref_stats/`, `manifest_times_*.json`, `plots/` |
 | Docker | `../Dockerfile` |
+
+Заявленный score: **full-frame test \(S_\mathrm{all}\)=0.0724**. См. `MANIFEST.json`.
