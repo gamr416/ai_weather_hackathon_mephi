@@ -9,4 +9,5 @@
 | σ / manifests / plots | `ref_stats/`, `manifest_times_*.json`, `plots/` |
 | Docker | `../Dockerfile` |
 
-Заявленный score: **full-frame test \(S_\mathrm{all}\)=0.0724**. См. `MANIFEST.json`.
+Заявленный score: **full-frame test \(S_\mathrm{all}\)=0.0724**. См. `MANIFEST.json`.  
+Методология: [`../docs/methodology.md`](../docs/methodology.md).
