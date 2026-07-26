@@ -81,4 +81,8 @@ pip install -r requirements.txt
 
 ## Ресурсы
 
-RTX 3060 12 GB · 19.11 M params · N=512 · 40k steps · 0.5° only  
+RTX 3060 12 GB · 19.11 M params · N=512 · 40k steps · 0.5° only
+
+## Лицензия
+
+Этот репозиторий распространяется на условиях [GNU General Public License v3.0](LICENSE) (GPL-3.0).
